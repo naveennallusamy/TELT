@@ -23,17 +23,4 @@ public class UserController {
         Optional<String> tenant = Optional.ofNullable(tenantName);
         return ResponseEntity.ok(userService.registerUser(email, mobile, password, roleName, tenant));
     }
-
-    // Change Password API
-    @PostMapping("/change-password")
-    public ResponseEntity<User> changePassword(@RequestParam String identifier, // Can be email or mobile
-                                               @RequestParam String newPassword) {
-        return ResponseEntity.ok(userService.changePassword(identifier, newPassword));
-    }
-
-    // Login API
-    @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestParam String emailOrMobile, @RequestParam String password) {
-        return ResponseEntity.ok(userService.login(emailOrMobile, password));
-    }
 }

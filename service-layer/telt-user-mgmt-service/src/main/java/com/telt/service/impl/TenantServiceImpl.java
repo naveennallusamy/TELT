@@ -6,6 +6,8 @@ import com.telt.service.TenantService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class TenantServiceImpl implements TenantService {
 
@@ -20,19 +22,34 @@ public class TenantServiceImpl implements TenantService {
     @Override
     public Tenant findOrCreateTenant(String tenantName, String description) {
         return tenantRepository.findByName(tenantName)
-                .orElseGet(() -> createTenant(tenantName, description));
+                .orElseGet(() -> createTenant(new Tenant() {{
+                    setName(tenantName);
+                    setDescription(description);
+                }}));
     }
 
     /**
-     * @param tenantName
-     * @param description
+     * @param tenant
      * @return
      */
     @Override
-    public Tenant createTenant(String tenantName, String description) {
-        Tenant tenant = new Tenant();
-        tenant.setName(tenantName);
-        tenant.setDescription(description);
+    public Tenant createTenant(Tenant tenant) {
         return tenantRepository.save(tenant);
+    }
+
+    /**
+     * @return
+     */
+    @Override
+    public List<Tenant> findAll() {
+        return tenantRepository.findAll();
+    }
+
+    /**
+     * @param tenantId
+     */
+    @Override
+    public void deleteTenant(Long tenantId) {
+        tenantRepository.deleteById(tenantId);
     }
 }

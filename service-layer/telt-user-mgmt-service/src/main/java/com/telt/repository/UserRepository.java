@@ -6,10 +6,12 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface UserRepository extends BaseRepository<User, Long> {
-    Optional<User> findByEmailOrMobile(String email, String mobile);
-/*    Optional<User> findByEmailAndTenantId(String email, Long tenantId);
-    Optional<User> findByMobileNumberAndTenantId(String mobileNumber, Long tenantId);
+public interface UserRepository extends BaseRepository<User, String> {
+    Optional<User> findByEmailOrMobileNumber(String email, String mobileNumber);
+
+    /*    Optional<User> findByEmailAndTenantId(String email, Long tenantId);
+        Optional<User> findByMobileNumberAndTenantId(String mobileNumber, Long tenantId);*/
     Optional<User> findByEmail(String email);
-    Optional<User> findByMobileNumber(String mobileNumber);*/
+
+    Optional<User> findByMobileNumber(String mobileNumber);
 }

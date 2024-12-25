@@ -1,9 +1,12 @@
-package com.telt.service;
+package com.telt.service.impl;
 
 import com.telt.entity.Role;
 import com.telt.entity.Tenant;
 import com.telt.entity.User;
 import com.telt.repository.UserRepository;
+import com.telt.service.RoleService;
+import com.telt.service.TenantService;
+import com.telt.service.UserService;
 import com.telt.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -43,7 +46,7 @@ public class UserServiceImpl implements UserService {
 
         User user = new User();
         user.setEmail(email);
-        user.setMobile(mobile);
+        user.setMobileNumber(mobile);
         user.setPassword(passwordEncoder.encode(password));
         user.setRole(role);
 
@@ -54,35 +57,5 @@ public class UserServiceImpl implements UserService {
         });
 
         return userRepository.save(user);
-    }
-
-    /**
-     * @param identifier
-     * @param newPassword
-     * @return
-     */
-    @Override
-    public User changePassword(String identifier, String newPassword) {
-        User user = userRepository.findByEmailOrMobile(identifier, identifier)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        user.setPassword(passwordEncoder.encode(newPassword));
-        return userRepository.save(user);
-    }
-
-    /**
-     * @param emailOrMobile
-     * @param password
-     * @return
-     */
-    @Override
-    public String login(String emailOrMobile, String password) {
-        User user = userRepository.findByEmailOrMobile(emailOrMobile, emailOrMobile)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
-
-        if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new IllegalArgumentException("Invalid credentials");
-        }
-
-        return jwtUtil.generateToken(user.getEmail());
     }
 }
