@@ -12,7 +12,7 @@ public interface BaseRepository<T, ID> extends JpaRepository<T, ID> {
     @Override
     @Query("select e from #{#entityName} e where " +
             "(?#{T(com.example.TenantContext).isSuperAdmin()} = true OR " +
-            " e.tenantId = ?#{T(com.example.TenantContext).getCurrentTenant()})")
+            " e.tenant.tenantId = ?#{T(com.example.TenantContext).getCurrentTenant()})")
     List<T> findAll();
 }
 

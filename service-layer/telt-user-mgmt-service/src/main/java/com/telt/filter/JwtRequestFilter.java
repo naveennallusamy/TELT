@@ -1,16 +1,16 @@
 package com.telt.filter;
 
+import com.telt.constants.RoleEnum;
+import com.telt.entity.User;
+import com.telt.repository.UserRepository;
 import com.telt.util.JwtUtil;
 import com.telt.util.TenantContext;
+import jakarta.annotation.Nonnull;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -21,8 +21,8 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     @Autowired
     private JwtUtil jwtUtil;
 
-/*    @Autowired
-    private UserDetailsService userDetailsService;*/
+    @Autowired
+    private UserRepository userRepository;
 
     /**
      * @param request
@@ -32,14 +32,56 @@ public class JwtRequestFilter extends OncePerRequestFilter {
      * @throws IOException
      */
     @Override
+    protected void doFilterInternal(@Nonnull HttpServletRequest request, @Nonnull HttpServletResponse response,
+                                    @Nonnull FilterChain filterChain) throws ServletException, IOException {
+        if (isSwaggerRequest(request)) {
+            filterChain.doFilter(request, response);
+            return; // Exit filter early for Swagger
+        }
+
+        String token = getTokenFromRequest(request);
+
+        if (token != null) {
+            String username = jwtUtil.extractUsername(token);
+            User user = null;
+            try {
+                user = userRepository.findByEmail(username).orElseThrow(() -> new IllegalArgumentException("User Not Found"));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
+            // Set user roles and tenant context
+            if (user.getRole().equals(RoleEnum.SUPER_ADMIN)) {
+                TenantContext.setCurrentRole(String.valueOf(RoleEnum.SUPER_ADMIN));
+            } else {
+                TenantContext.setCurrentRole(String.valueOf(RoleEnum.SUPER_ADMIN));
+                TenantContext.setCurrentTenant(user.getTenant() != null ? user.getTenant().getTenantId() : null);
+            }
+        }
+
+        filterChain.doFilter(request, response);
+    }
+    /*@Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws IOException, ServletException {
         final String authorizationHeader = request.getHeader("Authorization");
-        String tenantId = request.getHeader("X-Tenant-ID");
+            Long tenantId = Long.valueOf(request.getHeader("X-Tenant-ID"));
         String username = null;
         String jwt = null;
 
-        if (tenantId != null) {
-            TenantContext.setCurrentTenant(tenantId);
+        TenantContext.setCurrentTenant(tenantId);
+
+        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            jwt = authorizationHeader.substring(7);
+            username = jwtUtil.extractUsername(jwt);
+        }
+
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+
+            if (jwtUtil.isTokenValid(jwt, userDetails.getUsername())) {
+                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+            }
         }
 
         try {
@@ -47,21 +89,55 @@ public class JwtRequestFilter extends OncePerRequestFilter {
         } finally {
             TenantContext.clear();
         }
+    }*/
+
+    public String getTokenFromRequest(HttpServletRequest request) {
+        final String authorizationHeader = request.getHeader("Authorization");
 
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
-            username = jwtUtil.extractUsername(jwt);
+            return authorizationHeader.substring(7);
         }
 
-/*        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+        throw new IllegalArgumentException("Missing or invalid Authorization header");
+    }
 
-            if (jwtUtil.validateToken(jwt, userDetails.getUsername())) {
-                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+    private boolean isSwaggerRequest(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs");
+    }
+}
+
+/*
+public class JwtFilter extends OncePerRequestFilter {
+
+    private final JwtUtil jwtUtil;
+    private final UserRepository userRepository;
+
+    public JwtFilter(JwtUtil jwtUtil, UserRepository userRepository) {
+        this.jwtUtil = jwtUtil;
+        this.userRepository = userRepository;
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        String token = getTokenFromRequest(request);
+
+        if (token != null && jwtUtil.validateToken(token)) {
+            String username = jwtUtil.getUsernameFromToken(token);
+            User user = userRepository.findByUsername(username).orElseThrow(() -> new Exception("User not found"));
+
+            // Set user roles and tenant context
+            if (user.getRole().equals(Role.SUPER_ADMIN)) {
+                // If the user is a Super Admin, let them access all tenants
+                request.setAttribute("role", Role.SUPER_ADMIN);
+            } else {
+                // Tenant-based users
+                request.setAttribute("role", user.getRole());
+                request.setAttribute("tenantId", user.getTenant() != null ? user.getTenant().getId() : null);
             }
-        }*/
+        }
 
         filterChain.doFilter(request, response);
     }
 }
+*/

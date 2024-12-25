@@ -11,7 +11,7 @@ import java.util.Date;
 public class Tenant {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long tenantId;
 
     @Column(nullable = false, unique = true)
     private String name;
@@ -20,7 +20,5 @@ public class Tenant {
 
     @Temporal(TemporalType.TIMESTAMP)
     private Date createdAt = new Date();
-
-    // Getters and Setters
 }
 
