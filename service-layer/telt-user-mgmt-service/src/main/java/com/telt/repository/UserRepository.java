@@ -16,4 +16,6 @@ public interface UserRepository extends BaseRepository<User, String> {
     Optional<User> findByMobileNumber(Long mobileNumber);
 
     boolean existsByUsername(String username);
+
+    Optional<User> findByEmailOrMobileNumberOrUsername(String email, Long mobileNumber, String username);
 }

@@ -26,10 +26,11 @@ public class SuperAdminSeeder implements CommandLineRunner {
      */
     @Override
     public void run(String... args) throws Exception {
-        Role superAdminRole = roleRepository.findByName("SUPER_ADMIN")
-                .orElseGet(() -> roleRepository.save(new Role() {{
-                    setName("SUPER_ADMIN");
-                }}));
+        Role superAdminRole = roleRepository.findByName("SUPER_ADMIN").orElseGet(() -> {
+            Role role = new Role();
+            role.setName("SUPER_ADMIN");
+            return roleRepository.save(role);
+        });
 
         if (!userRepository.existsByUsername("teltadmin")) {
             User superAdmin = new User();

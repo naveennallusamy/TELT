@@ -1,10 +1,12 @@
 package com.telt.controller;
 
-import com.telt.entity.*;
+import com.telt.entity.AuthResponse;
+import com.telt.entity.ChangePasswordRequest;
+import com.telt.entity.ForgotPasswordRequest;
+import com.telt.entity.LoginRequest;
 import com.telt.repository.UserRepository;
-import com.telt.service.PasswordService;
+import com.telt.service.AuthService;
 import com.telt.util.JwtUtil;
-import com.telt.util.TenantContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -22,17 +24,17 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    private final PasswordService passwordService;
+    private final AuthService authService;
 
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
     @Autowired
     PasswordEncoder passwordEncoder;
 
-    public AuthController(UserRepository userRepository, JwtUtil jwtUtil, PasswordService passwordService) {
+    public AuthController(UserRepository userRepository, JwtUtil jwtUtil, AuthService authService) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
-        this.passwordService = passwordService;
+        this.authService = authService;
     }
 
     @Operation(summary = "Authenticate user and generate JWT")
@@ -40,16 +42,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody @Valid LoginRequest loginRequest) {
         try {
-            User user = loginRequest.getUsername().contains("@") ?
-                    userRepository.findByEmail(loginRequest.getUsername()).orElseThrow(() -> new BadCredentialsException("Invalid Username")) :
-                    userRepository.findByMobileNumber(Long.valueOf(loginRequest.getUsername())).orElseThrow(() -> new BadCredentialsException("Invalid Username"));
-
-            if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
-                throw new BadCredentialsException("Invalid Password");
-            }
-            String token = jwtUtil.generateToken(user.getEmail(), user.getRole().getName(), TenantContext.getCurrentTenant());
-
-            return ResponseEntity.ok(new AuthResponse(token));
+            return ResponseEntity.ok(authService.login(loginRequest));
         } catch (BadCredentialsException ex) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ex.getMessage());
         }
@@ -58,7 +51,7 @@ public class AuthController {
     @PostMapping("/forgot-password")
     public ResponseEntity<String> forgotPassword(@RequestBody ForgotPasswordRequest request) {
         try {
-            passwordService.forgotPassword(request.getEmailOrMobile());
+            authService.forgotPassword(request.getEmailOrMobile());
             return ResponseEntity.ok("Password reset link has been sent to your email");
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
@@ -68,7 +61,7 @@ public class AuthController {
     @PostMapping("/reset-password")
     public ResponseEntity<String> resetPassword(@RequestParam("token") String token, @RequestParam("newPassword") String newPassword) {
         try {
-            passwordService.resetPassword(token, newPassword);
+            authService.resetPassword(token, newPassword);
             return ResponseEntity.ok("Password reset successfully");
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
@@ -78,7 +71,7 @@ public class AuthController {
     @PostMapping("/change-password")
     public ResponseEntity<String> changePassword(@RequestBody ChangePasswordRequest request) {
         try {
-            passwordService.changePassword(request.getUserId(), request.getOldPassword(), request.getNewPassword());
+            authService.changePassword(request.getUserId(), request.getOldPassword(), request.getNewPassword());
             return ResponseEntity.ok("Password changed successfully");
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
