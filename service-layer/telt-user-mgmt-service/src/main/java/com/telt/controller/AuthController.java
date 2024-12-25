@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -37,20 +38,20 @@ public class AuthController {
     @Operation(summary = "Authenticate user and generate JWT")
     @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Successfully authenticated", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AuthResponse.class))), @ApiResponse(responseCode = "401", description = "Invalid credentials", content = @Content)})
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> login(@RequestBody @Valid LoginRequest loginRequest) {
         try {
             User user = loginRequest.getUsername().contains("@") ?
-                    userRepository.findByEmail(loginRequest.getUsername()).orElseThrow(() -> new IllegalArgumentException("Invalid Username or Password")) :
-                    userRepository.findByMobileNumber(loginRequest.getUsername()).orElseThrow(() -> new IllegalArgumentException("Invalid Username or Password"));
+                    userRepository.findByEmail(loginRequest.getUsername()).orElseThrow(() -> new BadCredentialsException("Invalid Username")) :
+                    userRepository.findByMobileNumber(Long.valueOf(loginRequest.getUsername())).orElseThrow(() -> new BadCredentialsException("Invalid Username"));
 
             if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
-                throw new IllegalArgumentException("Invalid Password");
+                throw new BadCredentialsException("Invalid Password");
             }
             String token = jwtUtil.generateToken(user.getEmail(), user.getRole().getName(), TenantContext.getCurrentTenant());
 
             return ResponseEntity.ok(new AuthResponse(token));
         } catch (BadCredentialsException ex) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ex.getMessage());
         }
     }
 

@@ -19,7 +19,7 @@ public class UserController {
 
     // Register User API
     @PostMapping("/register")
-    public ResponseEntity<User> registerUser(@RequestParam String email, @RequestParam String mobile, @RequestParam String password, @RequestParam String roleName, @RequestParam(required = false) String tenantName) {
+    public ResponseEntity<User> registerUser(@RequestParam String email, @RequestParam Long mobile, @RequestParam String password, @RequestParam String roleName, @RequestParam(required = false) String tenantName) {
         Optional<String> tenant = Optional.ofNullable(tenantName);
         return ResponseEntity.ok(userService.registerUser(email, mobile, password, roleName, tenant));
     }

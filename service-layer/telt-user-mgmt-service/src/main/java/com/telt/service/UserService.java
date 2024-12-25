@@ -6,6 +6,6 @@ import java.util.Optional;
 
 public interface UserService {
 
-    User registerUser(String email, String mobile, String password, String roleName,
+    User registerUser(String email, Long mobile, String password, String roleName,
                       Optional<String> tenantName);
 }

@@ -40,7 +40,7 @@ public class PasswordServiceImpl implements PasswordService {
         if (emailOrMobile.contains("@")) {
             userOptional = userRepository.findByEmail(emailOrMobile);
         } else {
-            userOptional = userRepository.findByMobileNumber(emailOrMobile);
+            userOptional = userRepository.findByMobileNumber(Long.valueOf(emailOrMobile));
         }
 
         if (userOptional.isEmpty()) {

@@ -7,11 +7,13 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends BaseRepository<User, String> {
-    Optional<User> findByEmailOrMobileNumber(String email, String mobileNumber);
+    Optional<User> findByEmailOrMobileNumber(String email, Long mobileNumber);
 
     /*    Optional<User> findByEmailAndTenantId(String email, Long tenantId);
         Optional<User> findByMobileNumberAndTenantId(String mobileNumber, Long tenantId);*/
     Optional<User> findByEmail(String email);
 
-    Optional<User> findByMobileNumber(String mobileNumber);
+    Optional<User> findByMobileNumber(Long mobileNumber);
+
+    boolean existsByUsername(String username);
 }
