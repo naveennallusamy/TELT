@@ -1,13 +1,17 @@
 package com.telt.service.impl;
 
+import com.telt.entity.AuthResponse;
+import com.telt.entity.LoginRequest;
 import com.telt.entity.PasswordResetToken;
 import com.telt.entity.User;
 import com.telt.repository.PasswordResetTokenRepository;
 import com.telt.repository.UserRepository;
-import com.telt.service.PasswordService;
+import com.telt.service.AuthService;
 import com.telt.util.JwtUtil;
+import com.telt.util.TenantContext;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -15,8 +19,10 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.apache.commons.lang3.StringUtils.isNumeric;
+
 @Service
-public class PasswordServiceImpl implements PasswordService {
+public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository tokenRepository;
@@ -24,8 +30,7 @@ public class PasswordServiceImpl implements PasswordService {
     private final JavaMailSender mailSender;
     private final PasswordEncoder passwordEncoder;
 
-    public PasswordServiceImpl(UserRepository userRepository, PasswordResetTokenRepository tokenRepository,
-                               JwtUtil jwtUtil, JavaMailSender mailSender, PasswordEncoder passwordEncoder) {
+    public AuthServiceImpl(UserRepository userRepository, PasswordResetTokenRepository tokenRepository, JwtUtil jwtUtil, JavaMailSender mailSender, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.jwtUtil = jwtUtil;
@@ -33,15 +38,33 @@ public class PasswordServiceImpl implements PasswordService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    /**
+     * @param loginRequest
+     * @return
+     * @throws BadCredentialsException
+     */
+    @Override
+    public AuthResponse login(LoginRequest loginRequest) throws BadCredentialsException {
+        User user;
+        if (isNumeric(loginRequest.getUsername())) {
+            user = userRepository.findByEmailOrMobileNumberOrUsername(loginRequest.getUsername(), Long.valueOf(loginRequest.getUsername()), loginRequest.getUsername()).orElseThrow(() -> new BadCredentialsException("Invalid Username"));
+        } else {
+            user = userRepository.findByEmailOrMobileNumberOrUsername(loginRequest.getUsername(), null, loginRequest.getUsername()).orElseThrow(() -> new BadCredentialsException("Invalid Username"));
+        }
+
+        if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
+            throw new BadCredentialsException("Invalid Password");
+        }
+        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().getName(), TenantContext.getCurrentTenant());
+
+        return new AuthResponse(token);
+
+    }
+
     // Forgot password: Generate reset token and send email
     @Override
-    public void forgotPassword(String emailOrMobile) throws Exception {
-        Optional<User> userOptional;
-        if (emailOrMobile.contains("@")) {
-            userOptional = userRepository.findByEmail(emailOrMobile);
-        } else {
-            userOptional = userRepository.findByMobileNumber(emailOrMobile);
-        }
+    public void forgotPassword(String username) throws Exception {
+        Optional<User> userOptional = userRepository.findByEmailOrMobileNumberOrUsername(username, Long.valueOf(username), username);
 
         if (userOptional.isEmpty()) {
             throw new Exception("User not found");
@@ -65,8 +88,7 @@ public class PasswordServiceImpl implements PasswordService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(email);
         message.setSubject("Password Reset Request");
-        message.setText("To reset your password, click the following link: " +
-                "http://localhost:8080/api/auth/reset-password?token=" + token);
+        message.setText("To reset your password, click the following link: " + "http://localhost:8080/api/auth/reset-password?token=" + token);
         mailSender.send(message);
     }
 
@@ -94,8 +116,7 @@ public class PasswordServiceImpl implements PasswordService {
     @Override
     public void changePassword(String userId, String oldPassword, String newPassword) throws Exception {
         // Fetch user from the database
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new Exception("User not found"));
+        User user = userRepository.findById(userId).orElseThrow(() -> new Exception("User not found"));
 
         // Verify the old password
         if (!passwordEncoder.matches(oldPassword, user.getPassword())) {

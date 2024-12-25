@@ -34,9 +34,11 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(@Nonnull HttpServletRequest request, @Nonnull HttpServletResponse response,
                                     @Nonnull FilterChain filterChain) throws ServletException, IOException {
-        if (isSwaggerRequest(request)) {
+
+        String requestPath = request.getRequestURI();
+        if (requestPath.equals("/api/auth/login") || requestPath.contains("swagger-ui") || requestPath.contains("api-docs")) {
             filterChain.doFilter(request, response);
-            return; // Exit filter early for Swagger
+            return;
         }
 
         String token = getTokenFromRequest(request);
@@ -100,44 +102,5 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 
         throw new IllegalArgumentException("Missing or invalid Authorization header");
     }
-
-    private boolean isSwaggerRequest(HttpServletRequest request) {
-        String path = request.getRequestURI();
-        return path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs");
-    }
 }
 
-/*
-public class JwtFilter extends OncePerRequestFilter {
-
-    private final JwtUtil jwtUtil;
-    private final UserRepository userRepository;
-
-    public JwtFilter(JwtUtil jwtUtil, UserRepository userRepository) {
-        this.jwtUtil = jwtUtil;
-        this.userRepository = userRepository;
-    }
-
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        String token = getTokenFromRequest(request);
-
-        if (token != null && jwtUtil.validateToken(token)) {
-            String username = jwtUtil.getUsernameFromToken(token);
-            User user = userRepository.findByUsername(username).orElseThrow(() -> new Exception("User not found"));
-
-            // Set user roles and tenant context
-            if (user.getRole().equals(Role.SUPER_ADMIN)) {
-                // If the user is a Super Admin, let them access all tenants
-                request.setAttribute("role", Role.SUPER_ADMIN);
-            } else {
-                // Tenant-based users
-                request.setAttribute("role", user.getRole());
-                request.setAttribute("tenantId", user.getTenant() != null ? user.getTenant().getId() : null);
-            }
-        }
-
-        filterChain.doFilter(request, response);
-    }
-}
-*/

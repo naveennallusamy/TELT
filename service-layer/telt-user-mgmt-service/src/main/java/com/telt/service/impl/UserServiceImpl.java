@@ -41,7 +41,7 @@ public class UserServiceImpl implements UserService {
      * @return
      */
     @Override
-    public User registerUser(String email, String mobile, String password, String roleName, Optional<String> tenantName) {
+    public User registerUser(String email, Long mobile, String password, String roleName, Optional<String> tenantName) {
         Role role = roleService.findByName(roleName);
 
         User user = new User();
