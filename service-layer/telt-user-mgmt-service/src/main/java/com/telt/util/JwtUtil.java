@@ -12,7 +12,7 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
 
-    private final String SECRET_KEY = "VHJhbnNmb3JtaW5nRW50cnlMZXZlbFRhbGVudA==";  // Use a secure key
+    private final String SECRET_KEY = "U3RlbGxhckFjYWRlbXlUcmFuc2Zvcm1pbmdFbnRyeUxldmVsVGFsZW50";
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -29,7 +29,7 @@ public class JwtUtil {
 
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
-                .setSigningKey(SECRET_KEY)
+                .setSigningKey(Keys.hmacShaKeyFor(SECRET_KEY.getBytes()))
                 .parseClaimsJws(token)
                 .getBody();
     }

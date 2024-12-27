@@ -4,6 +4,8 @@ import com.telt.entity.Tenant;
 import com.telt.service.TenantService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,8 +18,12 @@ public class TenantController {
     private TenantService tenantService;
 
     @PostMapping("/create")
-    public ResponseEntity<Tenant> createTenant(@RequestParam @Valid Tenant tenant) {
-        return ResponseEntity.ok(tenantService.createTenant(tenant));
+    public ResponseEntity<?> createTenant(@RequestBody @Valid Tenant tenant) {
+        try {
+            return ResponseEntity.ok(tenantService.createTenant(tenant));
+        } catch (DataIntegrityViolationException ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ex.getMessage());
+        }
     }
 
     @GetMapping

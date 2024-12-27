@@ -88,7 +88,7 @@ public class AuthServiceImpl implements AuthService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(email);
         message.setSubject("Password Reset Request");
-        message.setText("To reset your password, click the following link: " + "http://localhost:8080/api/auth/reset-password?token=" + token);
+        message.setText("To reset your password, click the following link: " + "http://localhost:8080/telt/api/auth/reset-password?token=" + token);
         mailSender.send(message);
     }
 

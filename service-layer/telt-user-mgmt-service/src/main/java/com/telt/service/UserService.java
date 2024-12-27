@@ -2,10 +2,11 @@ package com.telt.service;
 
 import com.telt.entity.User;
 
-import java.util.Optional;
+import java.util.List;
 
 public interface UserService {
 
-    User registerUser(String email, Long mobile, String password, String roleName,
-                      Optional<String> tenantName);
+    User registerUser(User user);
+
+    List<User> findAll();
 }
