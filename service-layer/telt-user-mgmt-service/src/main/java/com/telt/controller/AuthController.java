@@ -4,9 +4,7 @@ import com.telt.entity.AuthResponse;
 import com.telt.entity.ChangePasswordRequest;
 import com.telt.entity.ForgotPasswordRequest;
 import com.telt.entity.LoginRequest;
-import com.telt.repository.UserRepository;
 import com.telt.service.AuthService;
-import com.telt.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -17,25 +15,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
 public class AuthController {
 
-    private final AuthService authService;
-
-    private final UserRepository userRepository;
-    private final JwtUtil jwtUtil;
     @Autowired
-    PasswordEncoder passwordEncoder;
-
-    public AuthController(UserRepository userRepository, JwtUtil jwtUtil, AuthService authService) {
-        this.userRepository = userRepository;
-        this.jwtUtil = jwtUtil;
-        this.authService = authService;
-    }
+    private AuthService authService;
 
     @Operation(summary = "Authenticate user and generate JWT")
     @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Successfully authenticated", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AuthResponse.class))), @ApiResponse(responseCode = "401", description = "Invalid credentials", content = @Content)})

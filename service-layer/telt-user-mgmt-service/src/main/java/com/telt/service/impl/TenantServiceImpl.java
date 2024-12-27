@@ -4,6 +4,7 @@ import com.telt.entity.Tenant;
 import com.telt.repository.TenantRepository;
 import com.telt.service.TenantService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,11 +22,19 @@ public class TenantServiceImpl implements TenantService {
      */
     @Override
     public Tenant findOrCreateTenant(String tenantName, String description) {
-        return tenantRepository.findByName(tenantName)
-                .orElseGet(() -> createTenant(new Tenant() {{
-                    setName(tenantName);
-                    setDescription(description);
-                }}));
+        return tenantRepository.findByTenantName(tenantName).orElseGet(() -> createTenant(new Tenant() {{
+            setTenantName(tenantName);
+            setDescription(description);
+        }}));
+    }
+
+    /**
+     * @param tenantName
+     * @return
+     */
+    @Override
+    public Tenant findByTenantName(String tenantName) {
+        return tenantRepository.findByTenantName(tenantName).orElseThrow(() -> new RuntimeException("Tenant Information not found"));
     }
 
     /**
@@ -34,7 +43,15 @@ public class TenantServiceImpl implements TenantService {
      */
     @Override
     public Tenant createTenant(Tenant tenant) {
-        return tenantRepository.save(tenant);
+        try {
+            return tenantRepository.save(tenant);
+        } catch (DataIntegrityViolationException e) {
+            if (e.getMessage().contains("tenant_name")) {
+                System.out.println("Unique name constraint violated");
+                throw new DataIntegrityViolationException("Tenant name already exists");
+            }
+        }
+        return null;
     }
 
     /**
