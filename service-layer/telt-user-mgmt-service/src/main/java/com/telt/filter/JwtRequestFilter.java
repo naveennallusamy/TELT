@@ -36,7 +36,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                                     @Nonnull FilterChain filterChain) throws ServletException, IOException {
 
         String requestPath = request.getRequestURI();
-        if (requestPath.equals("/api/auth/login") || requestPath.contains("swagger-ui") || requestPath.contains("api-docs")) {
+        if (requestPath.equals("/telt/api/auth/login") || requestPath.contains("swagger-ui") || requestPath.contains("api-docs")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -53,10 +53,10 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             }
 
             // Set user roles and tenant context
-            if (user.getRole().equals(RoleEnum.SUPER_ADMIN)) {
-                TenantContext.setCurrentRole(String.valueOf(RoleEnum.SUPER_ADMIN));
+            if (RoleEnum.SUPER_ADMIN.name().equals(user.getRole().getName())) {
+                TenantContext.setCurrentRole(RoleEnum.SUPER_ADMIN.name());
             } else {
-                TenantContext.setCurrentRole(String.valueOf(RoleEnum.SUPER_ADMIN));
+                TenantContext.setCurrentRole(user.getRole().getName());
                 TenantContext.setCurrentTenant(user.getTenant() != null ? user.getTenant().getTenantId() : null);
             }
         }
