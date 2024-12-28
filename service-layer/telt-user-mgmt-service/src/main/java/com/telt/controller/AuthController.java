@@ -29,7 +29,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody @Valid LoginRequest loginRequest) {
         try {
-            return ResponseEntity.ok(authService.login(loginRequest));
+            return ResponseEntity.status(HttpStatus.OK).body(authService.login(loginRequest));
         } catch (BadCredentialsException ex) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ex.getMessage());
         }
@@ -39,7 +39,7 @@ public class AuthController {
     public ResponseEntity<String> forgotPassword(@RequestBody ForgotPasswordRequest request) {
         try {
             authService.forgotPassword(request.getEmailOrMobile());
-            return ResponseEntity.ok("Password reset link has been sent to your email");
+            return ResponseEntity.status(HttpStatus.OK).body("Password reset link has been sent to your email");
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
         }
@@ -49,7 +49,7 @@ public class AuthController {
     public ResponseEntity<String> resetPassword(@RequestParam("token") String token, @RequestParam("newPassword") String newPassword) {
         try {
             authService.resetPassword(token, newPassword);
-            return ResponseEntity.ok("Password reset successfully");
+            return ResponseEntity.status(HttpStatus.OK).body("Password reset successfully");
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
         }
@@ -59,7 +59,7 @@ public class AuthController {
     public ResponseEntity<String> changePassword(@RequestBody ChangePasswordRequest request) {
         try {
             authService.changePassword(request.getUserId(), request.getOldPassword(), request.getNewPassword());
-            return ResponseEntity.ok("Password changed successfully");
+            return ResponseEntity.status(HttpStatus.CREATED).body("Password changed successfully");
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
         }

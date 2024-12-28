@@ -20,7 +20,7 @@ public class TenantController {
     @PostMapping("/create")
     public ResponseEntity<?> createTenant(@RequestBody @Valid Tenant tenant) {
         try {
-            return ResponseEntity.ok(tenantService.createTenant(tenant));
+            return ResponseEntity.status(HttpStatus.CREATED).body(tenantService.createTenant(tenant));
         } catch (DataIntegrityViolationException ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ex.getMessage());
         }

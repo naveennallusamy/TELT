@@ -3,6 +3,7 @@ package com.telt.controller;
 import com.telt.entity.Role;
 import com.telt.service.RoleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +18,6 @@ public class RoleController {
 
     @PostMapping("/create")
     public ResponseEntity<Role> createRole(@RequestParam String roleName) {
-        return ResponseEntity.ok(roleService.createRole(roleName));
+        return ResponseEntity.status(HttpStatus.CREATED).body(roleService.createRole(roleName));
     }
 }
