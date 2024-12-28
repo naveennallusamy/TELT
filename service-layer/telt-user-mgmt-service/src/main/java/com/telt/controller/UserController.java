@@ -1,5 +1,6 @@
 package com.telt.controller;
 
+import com.telt.dto.UserDTO;
 import com.telt.entity.User;
 import com.telt.service.UserService;
 import jakarta.validation.Valid;
@@ -18,8 +19,12 @@ public class UserController {
 
     // Register User API
     @PostMapping("/register")
-    public ResponseEntity<User> registerUser(@RequestBody @Valid User user) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(userService.registerUser(user));
+    public ResponseEntity<User> registerUser(@RequestBody @Valid UserDTO userDTO) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                userService.registerUser(
+                        userDTO.getUser(),
+                        userDTO.getPermanentAddress(),
+                        userDTO.getCurrentAddress()));
     }
 
     @GetMapping
