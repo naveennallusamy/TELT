@@ -1,19 +1,19 @@
-package com.telt.entity;
+package com.telt.entity.tenant;
 
+import com.telt.util.AuditableEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.Date;
 import java.util.Objects;
 
 @Entity
 @Getter
 @Setter
 @Table(name = "tenant")
-public class Tenant {
+public class Tenant extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long tenantId;
@@ -24,9 +24,6 @@ public class Tenant {
     private String tenantName;
 
     private String description;
-
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date createdAt = new Date();
 
     @Override
     public boolean equals(Object o) {

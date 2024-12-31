@@ -1,6 +1,6 @@
 package com.telt.service.impl;
 
-import com.telt.entity.Tenant;
+import com.telt.entity.tenant.Tenant;
 import com.telt.repository.TenantRepository;
 import com.telt.service.TenantService;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,6 +1,11 @@
 package com.telt.service.impl;
 
-import com.telt.entity.*;
+import com.telt.entity.address.AddressInfo;
+import com.telt.entity.role.Role;
+import com.telt.entity.tenant.Tenant;
+import com.telt.entity.user.User;
+import com.telt.entity.user.UserAddressAssoc;
+import com.telt.entity.user.UserAddressId;
 import com.telt.repository.UserAddressMappingRepository;
 import com.telt.repository.UserRepository;
 import com.telt.service.AddressService;
@@ -48,11 +53,13 @@ public class UserServiceImpl implements UserService {
         user.setRole(role);
         user.setTenant(tenant);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.getPersonalInfo().setUser(user);
         //user = userRepository.save(user);
         AddressInfo current = addressService.findOrCreateAddress(currentAddress);
         AddressInfo permanent = addressService.findOrCreateAddress(permanentAddress);
         saveUserAddressMappings(user, current, permanent);
-        return userRepository.save(user);
+        user = userRepository.save(user);
+        return user;
     }
 
     private void saveUserAddressMappings(User user, AddressInfo current, AddressInfo permanent) {

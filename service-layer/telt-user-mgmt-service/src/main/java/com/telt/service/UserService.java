@@ -1,7 +1,7 @@
 package com.telt.service;
 
-import com.telt.entity.AddressInfo;
-import com.telt.entity.User;
+import com.telt.entity.address.AddressInfo;
+import com.telt.entity.user.User;
 
 import java.util.List;
 

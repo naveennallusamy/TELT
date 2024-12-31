@@ -1,6 +1,6 @@
 package com.telt.service;
 
-import com.telt.entity.Tenant;
+import com.telt.entity.tenant.Tenant;
 
 import java.util.List;
 

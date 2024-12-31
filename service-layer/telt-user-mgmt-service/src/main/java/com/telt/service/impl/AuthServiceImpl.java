@@ -1,9 +1,9 @@
 package com.telt.service.impl;
 
-import com.telt.entity.AuthResponse;
-import com.telt.entity.LoginRequest;
-import com.telt.entity.PasswordResetToken;
-import com.telt.entity.User;
+import com.telt.entity.auth.AuthResponse;
+import com.telt.entity.auth.LoginRequest;
+import com.telt.entity.auth.PasswordResetToken;
+import com.telt.entity.user.User;
 import com.telt.repository.PasswordResetTokenRepository;
 import com.telt.repository.UserRepository;
 import com.telt.service.AuthService;

@@ -1,6 +1,7 @@
-package com.telt.entity;
+package com.telt.entity.user;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.telt.entity.address.AddressInfo;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

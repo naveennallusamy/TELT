@@ -1,6 +1,6 @@
 package com.telt.service.impl;
 
-import com.telt.entity.Role;
+import com.telt.entity.role.Role;
 import com.telt.repository.RoleRepository;
 import com.telt.service.RoleService;
 import org.springframework.beans.factory.annotation.Autowired;

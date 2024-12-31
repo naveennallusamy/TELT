@@ -1,9 +1,9 @@
 package com.telt.controller;
 
-import com.telt.entity.AuthResponse;
-import com.telt.entity.ChangePasswordRequest;
-import com.telt.entity.ForgotPasswordRequest;
-import com.telt.entity.LoginRequest;
+import com.telt.entity.auth.AuthResponse;
+import com.telt.entity.auth.ChangePasswordRequest;
+import com.telt.entity.auth.ForgotPasswordRequest;
+import com.telt.entity.auth.LoginRequest;
 import com.telt.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;

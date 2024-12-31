@@ -1,4 +1,4 @@
-package com.telt.entity;
+package com.telt.entity.user;
 
 import jakarta.persistence.Embeddable;
 import lombok.Data;

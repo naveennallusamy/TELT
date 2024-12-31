@@ -1,6 +1,6 @@
 package com.telt.repository;
 
-import com.telt.entity.Role;
+import com.telt.entity.role.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

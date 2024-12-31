@@ -1,6 +1,6 @@
 package com.telt.controller;
 
-import com.telt.entity.Tenant;
+import com.telt.entity.tenant.Tenant;
 import com.telt.service.TenantService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;

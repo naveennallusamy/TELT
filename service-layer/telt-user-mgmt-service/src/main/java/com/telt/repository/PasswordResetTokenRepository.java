@@ -1,6 +1,6 @@
 package com.telt.repository;
 
-import com.telt.entity.PasswordResetToken;
+import com.telt.entity.auth.PasswordResetToken;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

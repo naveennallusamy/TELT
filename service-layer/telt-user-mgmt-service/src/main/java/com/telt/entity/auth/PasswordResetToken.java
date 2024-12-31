@@ -1,5 +1,6 @@
-package com.telt.entity;
+package com.telt.entity.auth;
 
+import com.telt.entity.user.User;
 import jakarta.persistence.*;
 import lombok.Data;
 

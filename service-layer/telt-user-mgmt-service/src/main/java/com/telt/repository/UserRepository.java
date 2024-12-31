@@ -1,6 +1,6 @@
 package com.telt.repository;
 
-import com.telt.entity.User;
+import com.telt.entity.user.User;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;

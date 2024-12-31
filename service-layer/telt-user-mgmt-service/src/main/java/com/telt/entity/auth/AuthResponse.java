@@ -1,4 +1,4 @@
-package com.telt.entity;
+package com.telt.entity.auth;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

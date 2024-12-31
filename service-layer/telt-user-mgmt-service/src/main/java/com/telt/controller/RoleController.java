@@ -1,6 +1,6 @@
 package com.telt.controller;
 
-import com.telt.entity.Role;
+import com.telt.entity.role.Role;
 import com.telt.service.RoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;

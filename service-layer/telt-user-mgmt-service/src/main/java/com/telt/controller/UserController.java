@@ -1,7 +1,7 @@
 package com.telt.controller;
 
 import com.telt.dto.UserDTO;
-import com.telt.entity.User;
+import com.telt.entity.user.User;
 import com.telt.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +19,7 @@ public class UserController {
 
     // Register User API
     @PostMapping("/register")
-    public ResponseEntity<User> registerUser(@RequestBody @Valid UserDTO userDTO) {
+    public ResponseEntity<?> registerUser(@RequestBody @Valid UserDTO userDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(
                 userService.registerUser(
                         userDTO.getUser(),

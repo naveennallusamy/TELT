@@ -1,7 +1,7 @@
 package com.telt.service;
 
-import com.telt.entity.AuthResponse;
-import com.telt.entity.LoginRequest;
+import com.telt.entity.auth.AuthResponse;
+import com.telt.entity.auth.LoginRequest;
 
 public interface AuthService {
 

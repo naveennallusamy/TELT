@@ -1,7 +1,7 @@
 package com.telt;
 
-import com.telt.entity.Role;
-import com.telt.entity.User;
+import com.telt.entity.role.Role;
+import com.telt.entity.user.User;
 import com.telt.repository.RoleRepository;
 import com.telt.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;

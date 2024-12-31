@@ -1,6 +1,6 @@
 package com.telt.service.impl;
 
-import com.telt.entity.AddressInfo;
+import com.telt.entity.address.AddressInfo;
 import com.telt.repository.AddressRepository;
 import com.telt.service.AddressService;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,6 +1,6 @@
 package com.telt.repository;
 
-import com.telt.entity.AddressInfo;
+import com.telt.entity.address.AddressInfo;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

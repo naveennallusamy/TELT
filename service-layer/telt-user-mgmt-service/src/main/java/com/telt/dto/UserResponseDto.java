@@ -1,12 +1,12 @@
 package com.telt.dto;
 
 import com.telt.entity.address.AddressInfo;
-import com.telt.entity.user.User;
-import lombok.Data;
 
-@Data
-public class UserDTO {
-    private User user;
+public class UserResponseDto {
+    private String firstName;
+    private String lastName;
+    private String email;
+    private String phoneNumber;
     private AddressInfo currentAddress;
     private AddressInfo permanentAddress;
 }
