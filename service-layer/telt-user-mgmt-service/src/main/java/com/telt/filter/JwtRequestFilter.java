@@ -60,6 +60,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             }
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+                logger.info(userDetails.getAuthorities());
 
                 if (jwtUtil.isTokenValid(token, user.getEmail())) {
                     UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
@@ -68,8 +69,6 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                     throw new RuntimeException("Invalid token");
                 }
             }
-
-            // Set user roles and tenant context
             if (RoleEnum.SUPER_ADMIN.name().equals(user.getRole().getName())) {
                 TenantContext.setCurrentRole(RoleEnum.SUPER_ADMIN.name());
             } else {

@@ -12,10 +12,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 @Entity
 @Getter
@@ -59,6 +56,13 @@ public class User extends AuditableEntity implements UserDetails {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UserAddressAssoc> userAddressDetails = new HashSet<>();
 
+    public User(String username, String email, long mobileNumber, Role role) {
+        this.username = username;
+        this.email = email;
+        this.mobileNumber = mobileNumber;
+        this.role = role;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -74,7 +78,7 @@ public class User extends AuditableEntity implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Set.of(new SimpleGrantedAuthority("ROLE_" + role.getName()));
+        return Collections.singletonList(new SimpleGrantedAuthority(role.getName()));
     }
 
     @Override

@@ -13,8 +13,10 @@ public class AddressServiceImpl implements AddressService {
     AddressRepository addressRepository;
 
     /**
-     * @param address
-     * @return
+     * Finds an existing address by the given criteria, or creates a new one if it does not exist.
+     *
+     * @param address the address to search for
+     * @return the existing or newly created address
      */
     @Override
     public AddressInfo findOrCreateAddress(AddressInfo address) {

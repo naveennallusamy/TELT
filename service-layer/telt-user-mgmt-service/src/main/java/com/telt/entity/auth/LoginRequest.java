@@ -11,7 +11,7 @@ public class LoginRequest {
     @Nonnull
     @NotEmpty
     @Schema(description = "User email or mobile number", example = "user@example.com")
-    private String username;
+    private String userName;
     @Nonnull
     @NotEmpty
     @Schema(description = "User password", example = "password123")

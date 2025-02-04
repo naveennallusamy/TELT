@@ -22,22 +22,29 @@ public class OrganizationServicerImpl implements OrganizationService {
     AddressService addressService;
 
     /**
-     * @param organizationDetails
-     * @param addressInfo
-     * @return
+     * Registers an organization with the given details and address.
+     *
+     * @param organizationDetails The organization details.
+     * @param addressInfo         The address information.
+     * @return The registered organization details.
      */
     @Override
     public OrganizationDetails register(OrganizationDetails organizationDetails, AddressInfo addressInfo) {
-        Tenant tenant = null;
-        if (organizationDetails.getTenant() != null && organizationDetails.getTenant().getTenantName() != null) {
-            tenant = tenantService.findByTenantName(organizationDetails.getTenant().getTenantName());
-        }
+        Tenant tenant = organizationDetails.getTenant() != null && organizationDetails.getTenant().getTenantName() != null
+                ? tenantService.findByTenantName(organizationDetails.getTenant().getTenantName())
+                : null;
         AddressInfo address = addressService.findOrCreateAddress(addressInfo);
         organizationDetails.setTenant(tenant);
         saveOrgAddressMappings(organizationDetails, address);
         return organizationRepository.save(organizationDetails);
     }
 
+    /**
+     * Creates a new {@link OrgAddressAssoc} and adds it to the given {@link OrganizationDetails}.
+     *
+     * @param organizationDetails the organization details
+     * @param address             the address
+     */
     private void saveOrgAddressMappings(OrganizationDetails organizationDetails, AddressInfo address) {
         OrgAddressAssoc orgAddressAssoc = new OrgAddressAssoc();
         OrgAddressId orgAddressId = new OrgAddressId();

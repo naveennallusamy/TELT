@@ -11,13 +11,24 @@ public class RoleServiceImpl implements RoleService {
     @Autowired
     private RoleRepository roleRepository;
 
+    /**
+     * Creates a new role with the given name.
+     *
+     * @param roleName the name of the role to create
+     * @return the created Role object
+     */
     @Override
     public Role createRole(String roleName) {
-        Role role = new Role();
-        role.setName(roleName);
-        return roleRepository.save(role);
+        return roleRepository.save(new Role(roleName));
     }
 
+    /**
+     * Finds a role by its name.
+     *
+     * @param name the name of the role to find
+     * @return the Role object with the specified name
+     * @throws RuntimeException if no role with the given name is found
+     */
     @Override
     public Role findByName(String name) {
         return roleRepository.findByName(name).orElseThrow(() -> new RuntimeException("Role not found"));

@@ -16,6 +16,16 @@ public class RoleController {
     @Autowired
     private RoleService roleService;
 
+    /**
+     * Creates a new role in the system.
+     * <p>
+     * This endpoint is used to create a new role in the system. The role name
+     * is passed as a request parameter.
+     *
+     * @param roleName The name of the role to be created.
+     * @return ResponseEntity containing the created role with HTTP status
+     * CREATED.
+     */
     @PostMapping("/create")
     public ResponseEntity<Role> createRole(@RequestParam String roleName) {
         return ResponseEntity.status(HttpStatus.CREATED).body(roleService.createRole(roleName));

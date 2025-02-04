@@ -2,13 +2,15 @@ package com.telt.entity.role;
 
 import com.telt.util.AuditableEntity;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.Date;
 
 @Entity
 @Table(name = "roles")
-@Data
+@Getter
+@Setter
 public class Role extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -22,4 +24,8 @@ public class Role extends AuditableEntity {
     private Date createdDate = new Date();
 
     private String createdBy;
+
+    public Role(String name) {
+        this.name = name;
+    }
 }

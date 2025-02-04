@@ -1,5 +1,6 @@
 package com.telt.service.impl;
 
+import com.telt.dto.LoginResponseDTO;
 import com.telt.entity.auth.AuthResponse;
 import com.telt.entity.auth.LoginRequest;
 import com.telt.entity.auth.PasswordResetToken;
@@ -12,12 +13,14 @@ import com.telt.util.TenantContext;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.apache.commons.lang3.StringUtils.isNumeric;
 
@@ -39,51 +42,57 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /**
-     * @param loginRequest
-     * @return
-     * @throws BadCredentialsException
+     * Authenticates user and generates a JWT token.
+     *
+     * @param loginRequest User credentials
+     * @return ResponseEntity containing the generated JWT token
+     * @throws BadCredentialsException if the credentials are invalid
      */
     @Override
     public AuthResponse login(LoginRequest loginRequest) throws BadCredentialsException {
-        User user;
-        if (isNumeric(loginRequest.getUsername())) {
-            user = userRepository.findByEmailOrMobileNumberOrUsername(loginRequest.getUsername(), Long.valueOf(loginRequest.getUsername()), loginRequest.getUsername()).orElseThrow(() -> new BadCredentialsException("Invalid Username"));
-        } else {
-            user = userRepository.findByEmailOrMobileNumberOrUsername(loginRequest.getUsername(), null, loginRequest.getUsername()).orElseThrow(() -> new BadCredentialsException("Invalid Username"));
-        }
+        User user = userRepository.findByEmailOrMobileNumberOrUsername(loginRequest.getUserName(), isNumeric(loginRequest.getUserName()) ? Long.valueOf(loginRequest.getUserName()) : null, loginRequest.getUserName()).orElseThrow(() -> new BadCredentialsException("Invalid Username"));
 
         if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
             throw new BadCredentialsException("Invalid Password");
         }
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().getName(), TenantContext.getCurrentTenant());
 
-        return new AuthResponse(token);
+        AuthResponse authResponse = new AuthResponse();
+        authResponse.setToken(jwtUtil.generateToken(user.getEmail(), user.getRole().getName(), TenantContext.getCurrentTenant()));
+        authResponse.setUser(new LoginResponseDTO(user.getUsername(), "/img/avatars/thumb-1.jpg", user.getEmail(), user.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList())));
+
+        return authResponse;
 
     }
 
-    // Forgot password: Generate reset token and send email
+    /**
+     * Initiates the forgot password process by generating a password reset token
+     * and sending a reset link to the user's email or mobile number.
+     *
+     * @param username User's email address, mobile number, or username
+     * @throws Exception if the user is not found
+     */
     @Override
     public void forgotPassword(String username) throws Exception {
-        Optional<User> userOptional = userRepository.findByEmailOrMobileNumberOrUsername(username, Long.valueOf(username), username);
+        Optional<User> userOptional = userRepository.findByEmailOrMobileNumberOrUsername(username, isNumeric(username) ? Long.valueOf(username) : null, username);
 
-        if (userOptional.isEmpty()) {
-            throw new Exception("User not found");
-        }
-
-        User user = userOptional.get();
-        String token = UUID.randomUUID().toString();  // Generate a random token
-        LocalDateTime expirationDate = LocalDateTime.now().plusHours(1);  // Token expires in 1 hour
+        User user = userOptional.orElseThrow(() -> new Exception("User not found"));
 
         PasswordResetToken resetToken = new PasswordResetToken();
-        resetToken.setToken(token);
-        resetToken.setExpirationDate(expirationDate);
+        resetToken.setToken(UUID.randomUUID().toString());
+        resetToken.setExpirationDate(LocalDateTime.now().plusHours(1));
         resetToken.setUser(user);
+
         tokenRepository.save(resetToken);
 
-        // Send reset token via email (you can replace this with SMS or another method)
-        sendPasswordResetEmail(user.getEmail(), token);
+        sendPasswordResetEmail(user.getEmail(), resetToken.getToken());
     }
 
+    /**
+     * Sends a password reset link to the user's email address.
+     *
+     * @param email The user's email address
+     * @param token The password reset token
+     */
     private void sendPasswordResetEmail(String email, String token) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(email);
@@ -92,7 +101,18 @@ public class AuthServiceImpl implements AuthService {
         mailSender.send(message);
     }
 
-    // Reset password: Validate token and change the password
+    /**
+     * Resets the user's password if the given token is valid and not expired.
+     * <p>
+     * The {@code token} is expected to be a valid password reset token that has not expired.
+     * The {@code newPassword} will be used to set the user's new password.
+     * <p>
+     * If the token is invalid or has expired, an exception is thrown.
+     *
+     * @param token       The password reset token
+     * @param newPassword The new password for the user
+     * @throws Exception If the token is invalid or has expired
+     */
     @Override
     public void resetPassword(String token, String newPassword) throws Exception {
         Optional<PasswordResetToken> tokenOptional = tokenRepository.findByToken(token);
@@ -113,6 +133,18 @@ public class AuthServiceImpl implements AuthService {
         tokenRepository.delete(resetToken);
     }
 
+    /**
+     * Changes the password for a user.
+     * <p>
+     * This method verifies the old password and updates it with the new password
+     * for the specified user. If the user is not found or the old password does not
+     * match, an exception is thrown.
+     *
+     * @param userId      The identifier of the user whose password is to be changed
+     * @param oldPassword The current password of the user
+     * @param newPassword The new password to set for the user
+     * @throws Exception If the user is not found or the old password is incorrect
+     */
     @Override
     public void changePassword(String userId, String oldPassword, String newPassword) throws Exception {
         // Fetch user from the database

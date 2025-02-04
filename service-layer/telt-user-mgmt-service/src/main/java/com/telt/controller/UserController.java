@@ -17,16 +17,27 @@ public class UserController {
     @Autowired
     private UserService userService;
 
-    // Register User API
+    /**
+     * Registers a new user with the provided user details.
+     *
+     * @param userDTO Data transfer object containing user information, including personal details and addresses.
+     * @return ResponseEntity containing the registered User object with HTTP status CREATED.
+     */
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@RequestBody @Valid UserDTO userDTO) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(
+        User user =
                 userService.registerUser(
                         userDTO.getUser(),
                         userDTO.getPermanentAddress(),
-                        userDTO.getCurrentAddress()));
+                        userDTO.getCurrentAddress());
+        return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }
 
+    /**
+     * Retrieves a list of all users.
+     *
+     * @return ResponseEntity containing a list of User objects with HTTP status OK.
+     */
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
         return ResponseEntity.status(HttpStatus.OK).body(userService.findAll());

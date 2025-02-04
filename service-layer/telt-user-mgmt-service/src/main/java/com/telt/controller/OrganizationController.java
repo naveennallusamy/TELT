@@ -25,6 +25,19 @@ public class OrganizationController {
     @Autowired
     OrganizationService organizationService;
 
+    /**
+     * Organizations register for placement opportunities.
+     * <p>
+     * This endpoint expects a valid OrganizationRegisterDTO object in the request body.
+     * The OrganizationRegisterDTO object should contain the organization details and the
+     * address information. If the registration is successful, the endpoint will return
+     * a ResponseEntity with HTTP status OK and the registered organization details in
+     * the response body. If the registration fails, the endpoint will return a ResponseEntity
+     * with HTTP status UNAUTHORIZED and an error message in the response body.
+     *
+     * @param organizationDetails the OrganizationRegisterDTO object
+     * @return ResponseEntity containing the registered organization details
+     */
     @Operation(summary = "Organizations register for placement opportunities")
     @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Successfully authenticated", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AuthResponse.class))), @ApiResponse(responseCode = "401", description = "Invalid credentials", content = @Content)})
     @PostMapping("/register")
