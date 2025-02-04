@@ -1,7 +1,7 @@
 package com.telt;
 
-import com.telt.entity.Role;
-import com.telt.entity.User;
+import com.telt.entity.role.Role;
+import com.telt.entity.user.User;
 import com.telt.repository.RoleRepository;
 import com.telt.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,19 +26,12 @@ public class SuperAdminSeeder implements CommandLineRunner {
      */
     @Override
     public void run(String... args) throws Exception {
-        Role superAdminRole = roleRepository.findByName("SUPER_ADMIN").orElseGet(() -> {
-            Role role = new Role();
-            role.setName("SUPER_ADMIN");
-            return roleRepository.save(role);
-        });
+        Role superAdminRole = roleRepository.findByName("SUPER_ADMIN")
+                .orElseGet(() -> roleRepository.save(new Role("SUPER_ADMIN")));
 
         if (!userRepository.existsByUsername("teltadmin")) {
-            User superAdmin = new User();
+            User superAdmin = new User("teltadmin", "nsnaveenit@gmail.com", 8122291751L, superAdminRole);
             superAdmin.setPassword(passwordEncoder.encode("Welcome321!"));
-            superAdmin.setUsername("teltadmin");
-            superAdmin.setEmail("nsnaveenit@gmail.com");
-            superAdmin.setMobileNumber(8122291751L);
-            superAdmin.setRole(superAdminRole);
             userRepository.save(superAdmin);
         }
 

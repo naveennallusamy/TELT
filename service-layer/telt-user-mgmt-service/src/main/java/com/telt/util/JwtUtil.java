@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
@@ -13,6 +14,16 @@ import java.util.function.Function;
 public class JwtUtil {
 
     private final String SECRET_KEY = "U3RlbGxhckFjYWRlbXlUcmFuc2Zvcm1pbmdFbnRyeUxldmVsVGFsZW50";
+
+    public String getTokenFromRequest(HttpServletRequest request) {
+        final String authorizationHeader = request.getHeader("Authorization");
+
+        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            return authorizationHeader.substring(7);
+        }
+
+        throw new IllegalArgumentException("Missing or invalid Authorization header");
+    }
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);

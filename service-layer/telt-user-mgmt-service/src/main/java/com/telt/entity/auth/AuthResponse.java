@@ -1,5 +1,6 @@
-package com.telt.entity;
+package com.telt.entity.auth;
 
+import com.telt.dto.LoginResponseDTO;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -8,5 +9,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AuthResponse {
-    private String jwt;
+    private String token;
+    private LoginResponseDTO user;
 }

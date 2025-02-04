@@ -1,7 +1,7 @@
 package com.telt.filter;
 
 import com.telt.constants.RoleEnum;
-import com.telt.entity.User;
+import com.telt.entity.user.User;
 import com.telt.repository.UserRepository;
 import com.telt.util.JwtUtil;
 import com.telt.util.TenantContext;
@@ -11,6 +11,10 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -23,6 +27,9 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private UserDetailsService userDetailsService;
 
     /**
      * @param request
@@ -41,7 +48,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             return;
         }
 
-        String token = getTokenFromRequest(request);
+        String token = jwtUtil.getTokenFromRequest(request);
 
         if (token != null) {
             String username = jwtUtil.extractUsername(token);
@@ -51,56 +58,28 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+                logger.info(userDetails.getAuthorities());
 
-            // Set user roles and tenant context
+                if (jwtUtil.isTokenValid(token, user.getEmail())) {
+                    UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                } else {
+                    throw new RuntimeException("Invalid token");
+                }
+            }
             if (RoleEnum.SUPER_ADMIN.name().equals(user.getRole().getName())) {
                 TenantContext.setCurrentRole(RoleEnum.SUPER_ADMIN.name());
             } else {
                 TenantContext.setCurrentRole(user.getRole().getName());
                 TenantContext.setCurrentTenant(user.getTenant() != null ? user.getTenant().getTenantId() : null);
             }
+        } else {
+            throw new RuntimeException("JWT token is missing");
         }
 
         filterChain.doFilter(request, response);
-    }
-    /*@Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws IOException, ServletException {
-        final String authorizationHeader = request.getHeader("Authorization");
-            Long tenantId = Long.valueOf(request.getHeader("X-Tenant-ID"));
-        String username = null;
-        String jwt = null;
-
-        TenantContext.setCurrentTenant(tenantId);
-
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
-            username = jwtUtil.extractUsername(jwt);
-        }
-
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
-
-            if (jwtUtil.isTokenValid(jwt, userDetails.getUsername())) {
-                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-            }
-        }
-
-        try {
-            filterChain.doFilter(request, response);
-        } finally {
-            TenantContext.clear();
-        }
-    }*/
-
-    public String getTokenFromRequest(HttpServletRequest request) {
-        final String authorizationHeader = request.getHeader("Authorization");
-
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            return authorizationHeader.substring(7);
-        }
-
-        throw new IllegalArgumentException("Missing or invalid Authorization header");
     }
 }
 
