@@ -13,8 +13,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -28,15 +26,18 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     @Autowired
     private UserRepository userRepository;
 
-    @Autowired
-    private UserDetailsService userDetailsService;
-
     /**
-     * @param request
-     * @param response
-     * @param filterChain
-     * @throws jakarta.servlet.ServletException
-     * @throws IOException
+     * Filters incoming requests to validate JWT tokens and set up security context.
+     * <p>
+     * This method extracts the JWT token from the request, validates it, and sets up
+     * the Spring Security authentication context. It also sets the tenant context
+     * based on the user's role and tenant information.
+     *
+     * @param request     the HTTP request
+     * @param response    the HTTP response
+     * @param filterChain the filter chain
+     * @throws ServletException if a servlet error occurs
+     * @throws IOException      if an I/O error occurs
      */
     @Override
     protected void doFilterInternal(@Nonnull HttpServletRequest request, @Nonnull HttpServletResponse response,
@@ -52,18 +53,15 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 
         if (token != null) {
             String username = jwtUtil.extractUsername(token);
-            User user = null;
+            User user;
             try {
                 user = userRepository.findByEmail(username).orElseThrow(() -> new IllegalArgumentException("User Not Found"));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
-                logger.info(userDetails.getAuthorities());
-
                 if (jwtUtil.isTokenValid(token, user.getEmail())) {
-                    UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
                     SecurityContextHolder.getContext().setAuthentication(authenticationToken);
                 } else {
                     throw new RuntimeException("Invalid token");
