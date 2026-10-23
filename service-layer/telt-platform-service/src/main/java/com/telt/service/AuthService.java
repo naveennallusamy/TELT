@@ -20,6 +20,8 @@ public interface AuthService {
 
     void resetPassword(String token, String newPassword);
 
+    AuthResponse switchTenant(UUID userId, UUID tenantId);
+
     AuthResponse changePassword(UUID userId, String oldPassword, String newPassword);
 
     void sendPasswordResetLink(User user);

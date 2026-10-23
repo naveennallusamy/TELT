@@ -21,7 +21,7 @@ public class PasswordChangeRequiredFilter extends OncePerRequestFilter {
 
     public static final String CLAIM = "pcr";
     private static final Set<String> ALLOWED = Set.of(
-            "POST /auth/change-password", "POST /auth/logout", "POST /auth/logout-all", "GET /me");
+            "POST /auth/change-password", "POST /auth/logout", "POST /auth/logout-all", "GET /me", "GET /me/authorization");
 
     private final ApiErrorResponseWriter errorWriter;
 

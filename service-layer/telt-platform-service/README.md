@@ -59,3 +59,10 @@ Errors use one JSON shape: `{"code","message","correlationId","timestamp","detai
 ```bash
 ./mvnw test   # needs Docker (Testcontainers starts PostgreSQL)
 ```
+
+## Tenancy and access (Phase 1)
+
+- Users are global; `tenant_memberships` link them to tenants as `TENANT_ADMIN`, `SUB_ADMIN` or `STUDENT`. A student belongs to exactly one tenant (DB trigger); staff can belong to several and use `POST /auth/switch-tenant`.
+- Sub-admins are `TENANT_WIDE` or `DEPARTMENT_SCOPED` (default from `/tenant-settings`, per member via `PATCH /members/{userId}`).
+- Seeded roles (`GET /roles`) bundle permissions (`GET /permissions`); assign with `POST /members/{userId}/role-assignments` at `TENANT` or `DEPARTMENT` scope (department scope includes sub-departments). Grantors can't grant permissions they don't hold.
+- `GET /me/authorization` returns the caller's effective permissions; `/departments`, `/audit-events` manage the department tree and audit log.

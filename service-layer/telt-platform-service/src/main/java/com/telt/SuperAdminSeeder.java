@@ -1,10 +1,7 @@
 package com.telt;
 
 import com.telt.config.properties.BootstrapAdminProperties;
-import com.telt.constants.RoleEnum;
-import com.telt.entity.role.Role;
 import com.telt.entity.user.User;
-import com.telt.repository.RoleRepository;
 import com.telt.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,23 +20,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class SuperAdminSeeder implements ApplicationRunner {
 
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final BootstrapAdminProperties properties;
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        if (userRepository.existsByRole_Name(RoleEnum.SUPER_ADMIN.name())) {
+        if (userRepository.existsByPlatformRole(User.PLATFORM_SUPER_ADMIN)) {
             return;
         }
         if (isBlank(properties.password()) || isBlank(properties.email()) || isBlank(properties.mobileNumber())) {
             log.warn("No super admin exists; set TELT_ADMIN_EMAIL, TELT_ADMIN_MOBILE and TELT_ADMIN_PASSWORD to create one");
             return;
         }
-        Role role = roleRepository.findByName(RoleEnum.SUPER_ADMIN.name())
-                .orElseThrow(() -> new IllegalStateException("SUPER_ADMIN role missing; check Flyway migrations"));
-        User admin = new User(properties.username(), properties.email(), Long.parseLong(properties.mobileNumber()), role);
+        User admin = new User(properties.username(), properties.email(), Long.parseLong(properties.mobileNumber()));
+        admin.setPlatformRole(User.PLATFORM_SUPER_ADMIN);
         admin.setPassword(passwordEncoder.encode(properties.password()));
         userRepository.save(admin);
         log.info("Bootstrap super admin '{}' created", properties.username());

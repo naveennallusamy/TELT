@@ -1,6 +1,12 @@
 package com.telt.service.impl;
 
-import com.telt.constants.RoleEnum;
+import com.telt.access.AuthorizationService;
+import com.telt.access.AuthorizationSnapshot;
+import com.telt.constants.AccountType;
+import com.telt.constants.Permission;
+import com.telt.constants.RecordStatus;
+import com.telt.entity.tenant.TenantMembership;
+import com.telt.service.MembershipService;
 import com.telt.constants.UserStatus;
 import com.telt.dto.common.AddressDto;
 import com.telt.dto.user.PersonalInfoDto;
@@ -8,14 +14,12 @@ import com.telt.dto.user.RegisterUserRequest;
 import com.telt.dto.user.UpdateProfileRequest;
 import com.telt.dto.user.UserResponse;
 import com.telt.entity.address.AddressInfo;
-import com.telt.entity.role.Role;
 import com.telt.entity.tenant.Tenant;
 import com.telt.entity.user.User;
 import com.telt.entity.user.UserAddressAssoc;
 import com.telt.entity.user.UserAddressId;
 import com.telt.entity.user.UserPersonalInfo;
 import com.telt.error.ApiException;
-import com.telt.repository.RoleRepository;
 import com.telt.repository.UserRepository;
 import com.telt.security.SecureTokens;
 import com.telt.security.TokenService;
@@ -42,7 +46,8 @@ public class UserServiceImpl implements UserService {
     private static final String PERMANENT = "permanent";
 
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
+    private final MembershipService membershipService;
+    private final AuthorizationService authorizationService;
     private final TenantService tenantService;
     private final AddressService addressService;
     private final AuthService authService;
@@ -52,14 +57,23 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse register(RegisterUserRequest request) {
-        boolean creatingSuperAdmin = request.role() == RoleEnum.SUPER_ADMIN;
-        if (creatingSuperAdmin && !TenantContext.isSuperAdmin()) {
-            throw ApiException.forbidden("Only super admins can create super admins");
+        AccountType type = request.role();
+        Tenant tenant = null;
+        if (type == AccountType.SUPER_ADMIN) {
+            if (!TenantContext.isSuperAdmin()) {
+                throw ApiException.forbidden("Only super admins can create super admins");
+            }
+            if (request.tenantName() != null && !request.tenantName().isBlank()) {
+                throw ApiException.badRequest("Super admins do not belong to a tenant");
+            }
+        } else {
+            tenant = tenantService.resolveTargetTenant(request.tenantName(), true);
+            AuthorizationSnapshot snapshot = authorizationService.current();
+            boolean allowed = type == AccountType.STUDENT
+                    ? snapshot.allowsDepartment(Permission.STUDENT_ENROLL, request.departmentId())
+                    : snapshot.hasTenantWide(Permission.USER_MANAGE);
+            authorizationService.require(() -> allowed);
         }
-        if (creatingSuperAdmin && request.tenantName() != null && !request.tenantName().isBlank()) {
-            throw ApiException.badRequest("Super admins do not belong to a tenant");
-        }
-        Tenant tenant = creatingSuperAdmin ? null : tenantService.resolveTargetTenant(request.tenantName(), true);
         if (userRepository.existsByEmailIgnoreCase(request.email())) {
             throw ApiException.conflict("E-mail is already registered");
         }
@@ -75,8 +89,7 @@ public class UserServiceImpl implements UserService {
         user.setEmail(request.email());
         user.setMobileNumber(request.mobileNumber());
         user.setCountryCode(request.countryCode());
-        user.setRole(role(request.role()));
-        user.setTenant(tenant);
+        user.setPlatformRole(type == AccountType.SUPER_ADMIN ? User.PLATFORM_SUPER_ADMIN : null);
         boolean generatedPassword = request.password() == null;
         user.setPassword(passwordEncoder.encode(generatedPassword ? SecureTokens.newToken() : request.password()));
         user.setPasswordChangeRequired(true);
@@ -85,28 +98,36 @@ public class UserServiceImpl implements UserService {
         applyAddress(user, PERMANENT, request.permanentAddress());
 
         User saved = userRepository.save(user);
+        if (tenant != null) {
+            membershipService.createMembership(saved, tenant, type.toMembershipType(), request.accessMode(),
+                    request.departmentId());
+        }
         if (generatedPassword) {
             authService.sendPasswordResetLink(saved);
         }
-        return UserResponse.from(saved);
+        return response(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<UserResponse> findAll() {
-        return userRepository.findAll().stream().map(UserResponse::from).toList();
+        if (TenantContext.isSuperAdmin()) {
+            return userRepository.findAll().stream().map(this::response).toList();
+        }
+        return membershipService.visibleMemberships(Permission.USER_VIEW).stream()
+                .map(TenantMembership::getUser).map(this::response).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public UserResponse findById(UUID userId) {
-        return UserResponse.from(load(userId));
+        return response(loadManaged(userId, Permission.USER_VIEW));
     }
 
     @Override
     @Transactional(readOnly = true)
     public UserResponse currentUser() {
-        return UserResponse.from(load(TenantContext.requireCurrentUserId()));
+        return response(load(TenantContext.requireCurrentUserId()));
     }
 
     @Override
@@ -125,7 +146,7 @@ public class UserServiceImpl implements UserService {
         applyPersonalInfo(user, request.personalInfo());
         applyAddress(user, CURRENT, request.currentAddress());
         applyAddress(user, PERMANENT, request.permanentAddress());
-        return UserResponse.from(user);
+        return response(user);
     }
 
     @Override
@@ -134,41 +155,53 @@ public class UserServiceImpl implements UserService {
         if (userId.equals(TenantContext.requireCurrentUserId())) {
             throw ApiException.badRequest("You cannot change the status of your own account");
         }
-        User user = load(userId);
-        user.setStatus(status);
+        if (TenantContext.isSuperAdmin()) {
+            load(userId).setStatus(status);
+        } else {
+            membershipService.setStatus(userId, status == UserStatus.ACTIVE ? RecordStatus.ACTIVE : RecordStatus.INACTIVE);
+        }
         if (status == UserStatus.INACTIVE) {
             tokenService.revokeAll(userId);
-            user = load(userId);
         }
-        return UserResponse.from(user);
+        return response(load(userId));
     }
 
     @Override
     @Transactional
     public UserResponse unlock(UUID userId) {
-        User user = load(userId);
+        User user = loadManaged(userId, Permission.USER_MANAGE);
         user.setFailedLoginAttempts(0);
         user.setLockedUntil(null);
-        return UserResponse.from(user);
+        return response(user);
     }
 
     @Override
     @Transactional
     public void sendPasswordReset(UUID userId) {
-        User user = load(userId);
+        User user = loadManaged(userId, Permission.USER_MANAGE);
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw ApiException.badRequest("Cannot send a reset link to an inactive account");
         }
         authService.sendPasswordResetLink(user);
     }
 
-    private User load(UUID userId) {
-        return userRepository.findById(userId).orElseThrow(() -> ApiException.notFound("User"));
+    /**
+     * Super admins reach any user; tenant staff only members of their tenant within their permission scope.
+     */
+    private User loadManaged(UUID userId, Permission permission) {
+        if (TenantContext.isSuperAdmin()) {
+            return load(userId);
+        }
+        membershipService.requireAccessible(userId, permission);
+        return load(userId);
     }
 
-    private Role role(RoleEnum role) {
-        return roleRepository.findByName(role.name())
-                .orElseThrow(() -> new IllegalStateException("System role missing: " + role));
+    private UserResponse response(User user) {
+        return UserResponse.from(user, membershipService.summariesFor(user.getId()));
+    }
+
+    private User load(UUID userId) {
+        return userRepository.findById(userId).orElseThrow(() -> ApiException.notFound("User"));
     }
 
     private void applyPersonalInfo(User user, PersonalInfoDto dto) {

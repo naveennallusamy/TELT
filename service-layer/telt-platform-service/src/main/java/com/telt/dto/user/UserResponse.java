@@ -6,6 +6,7 @@ import com.telt.entity.user.User;
 import com.telt.entity.user.UserAddressAssoc;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public record UserResponse(
@@ -14,9 +15,8 @@ public record UserResponse(
         String email,
         Long mobileNumber,
         String countryCode,
-        String role,
-        UUID tenantId,
-        String tenantName,
+        String platformRole,
+        List<MembershipSummary> memberships,
         UserStatus status,
         boolean locked,
         boolean passwordChangeRequired,
@@ -25,11 +25,9 @@ public record UserResponse(
         AddressDto currentAddress,
         AddressDto permanentAddress) {
 
-    public static UserResponse from(User user) {
+    public static UserResponse from(User user, List<MembershipSummary> memberships) {
         return new UserResponse(user.getId(), user.getUsername(), user.getEmail(), user.getMobileNumber(),
-                user.getCountryCode(), user.getRole().getName(),
-                user.getTenant() == null ? null : user.getTenant().getTenantId(),
-                user.getTenant() == null ? null : user.getTenant().getTenantName(),
+                user.getCountryCode(), user.getPlatformRole(), memberships,
                 user.getStatus(), user.isLocked(Instant.now()), user.isPasswordChangeRequired(),
                 user.getLastLoginAt(), PersonalInfoDto.from(user.getPersonalInfo()),
                 address(user, "current"), address(user, "permanent"));

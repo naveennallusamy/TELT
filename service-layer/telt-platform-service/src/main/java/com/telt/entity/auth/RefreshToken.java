@@ -29,6 +29,11 @@ public class RefreshToken {
     @Column(nullable = false)
     private UUID familyId;
 
+    /**
+     * Tenant the session is active in; {@code null} for super admins.
+     */
+    private UUID tenantId;
+
     @Column(nullable = false)
     private Instant expiresAt;
 
