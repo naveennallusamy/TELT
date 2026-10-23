@@ -66,3 +66,23 @@ Errors use one JSON shape: `{"code","message","correlationId","timestamp","detai
 - Sub-admins are `TENANT_WIDE` or `DEPARTMENT_SCOPED` (default from `/tenant-settings`, per member via `PATCH /members/{userId}`).
 - Seeded roles (`GET /roles`) bundle permissions (`GET /permissions`); assign with `POST /members/{userId}/role-assignments` at `TENANT` or `DEPARTMENT` scope (department scope includes sub-departments). Grantors can't grant permissions they don't hold.
 - `GET /me/authorization` returns the caller's effective permissions; `/departments`, `/audit-events` manage the department tree and audit log.
+
+## Database roles and row-level security (Phase 1b)
+
+Tenant-owned tables (`departments`, `tenant_memberships`, `role_assignments`, `organization_dtls`, `audit_events`) have PostgreSQL row-level security. Every transaction sets `telt.tenant_id`, `telt.user_id` and `telt.bypass_rls` with `set_config(..., true)` (`RlsJpaTransactionManager`), taken from the access token. Super admins, login/refresh/password-reset flows and internal authorization lookups run with bypass. With no tenant context, these tables return no rows.
+
+RLS does not apply to superusers, `BYPASSRLS` roles or table owners, so use two roles:
+
+```sql
+CREATE ROLE telt_owner LOGIN PASSWORD '...';   -- owns the schema, runs Flyway
+CREATE ROLE telt_app   LOGIN PASSWORD '...';   -- used by the application at runtime
+```
+
+| Variable | Purpose |
+| --- | --- |
+| `DB_MIGRATION_USERNAME` / `DB_MIGRATION_PASSWORD` | Flyway (schema owner). Defaults to `DB_USERNAME`/`DB_PASSWORD`. |
+| `DB_USERNAME` / `DB_PASSWORD` | Application role; `V4` grants it DML (no `UPDATE`/`DELETE` on `audit_events`). |
+| `RLS_REQUIRE_ENFORCED` | `true` fails startup if the application role bypasses RLS (otherwise a warning is logged). |
+| `AUTHZ_INVALIDATION_ENABLED` | `LISTEN telt_authz` for cross-instance permission-cache eviction (default `true`). |
+
+Triggers on memberships, role assignments, departments and tenant settings call `pg_notify('telt_authz', ...)`. Each instance listens on a dedicated connection and evicts the affected Caffeine entries. The 5-minute TTL still caps how stale a cached entry can get if a notification is missed.

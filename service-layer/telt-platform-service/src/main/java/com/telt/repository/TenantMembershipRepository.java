@@ -1,5 +1,7 @@
 package com.telt.repository;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import com.telt.constants.MembershipType;
 import com.telt.entity.tenant.TenantMembership;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -10,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+@Transactional(readOnly = true)
 public interface TenantMembershipRepository extends JpaRepository<TenantMembership, UUID> {
 
     Optional<TenantMembership> findByTenantIdAndUser_Id(UUID tenantId, UUID userId);
