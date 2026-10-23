@@ -115,3 +115,22 @@ Platform content uses the same bank, question, version and review tables, owned 
   - `GET /granted-banks/{grantId}/questions[/{questionId}]` reads the release a grant currently exposes. Answer keys are only returned if the grant allows it and the caller has `ANSWER_KEY_VIEW`.
   - `POST /granted-banks/{grantId}/questions/{questionId}/clone` with `{bankId, categoryId?}` copies a question into a tenant bank as an editable draft. It records `sourceQuestionId` and `sourceVersionNo`.
 - **Database enforcement:** row-level security lets a tenant read only the platform banks, questions and versions in releases it is currently granted. Inserts, updates and deletes of platform rows by tenants are still blocked by the `tenant_isolation` policy.
+
+## Exams (Phase 3a)
+
+Tenant and platform exams share the same tables. A super admin's exams belong to the platform tenant and can only use platform questions.
+
+- **Structure:** an exam has numbered versions. Each version has `settings` and ordered `sections` (segments), and each section lists `items`. An exam with one section runs in a single go.
+  - `settings`: `durationMinutes` (required), `maxAttempts` (default 1), `shuffleQuestions`, `shuffleOptions`, `negativeMarking`, `passMarks`, `instructions`, `resultRelease` (`IMMEDIATE`, `AFTER_WINDOW` (default) or `MANUAL`).
+  - section: `title`, optional `timeLimitMinutes` (the sum may not exceed `durationMinutes`), optional `pickCount` (each attempt draws N of the listed items; they must carry equal marks).
+  - item: `questionId`, plus `grantId` for a granted platform question, and optional `marks` and `negativeMarks` that override the question's defaults.
+- **Endpoints:**
+  - `POST /exams` creates an exam with version 1 as a draft, and `GET /exams` and `GET /exams/{id}` read exams.
+  - `POST /exams/{id}/versions` starts a new draft version, and `PUT /exams/{id}/versions/{n}` replaces a draft.
+  - `POST .../submit` submits a version, `POST .../review` with `{decision}` reviews it (`REJECT` returns it to draft), and `POST .../publish` publishes it.
+  - `GET .../questions` reads the published snapshot, and `POST /exams/{id}/archive` archives an exam.
+- **Items freeze on save:** an own question uses its approved version, and a granted question uses the version in the grant's current release. Publishing checks every item again.
+- **Snapshot on publish:** publishing copies each question's content, answer key and marks into `exam_question_snapshots`. Retiring the question or revoking the grant afterwards doesn't change the exam.
+  - Answer keys of granted questions stay hidden from tenant staff unless the grant had `answerKeysVisible`.
+  - Publishing a new version retires the previous one.
+- **Database enforcement:** settings, sections and items can't change once a version leaves `DRAFT`. Snapshots can't be updated, and all exam tables have the `tenant_isolation` row-level security policy.
