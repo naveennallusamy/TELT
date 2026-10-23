@@ -75,7 +75,7 @@ class PlatformApiIntegrationTests {
         String adminA = email("admin-a");
         String userB = email("user-b");
         createUser(superAdminToken, adminA, "TENANT_ADMIN", tenantA, PASSWORD);
-        String userBId = createUser(superAdminToken, userB, "USER", tenantB, PASSWORD);
+        String userBId = createUser(superAdminToken, userB, "STUDENT", tenantB, PASSWORD);
 
         String adminToken = firstLoginAndChangePassword(adminA);
 
@@ -85,22 +85,22 @@ class PlatformApiIntegrationTests {
 
         mvc.perform(authed(get("/user"), adminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].tenantName", everyItem(is(tenantA))))
+                .andExpect(jsonPath("$[*].memberships[0].tenantName", everyItem(is(tenantA))))
                 .andExpect(jsonPath("$[*].email", not(hasItem(userB))))
                 .andExpect(jsonPath("$[*].password").doesNotExist());
 
         mvc.perform(authed(get("/user/" + userBId), adminToken)).andExpect(status().isNotFound());
         mvc.perform(authed(post("/user/" + userBId + "/deactivate"), adminToken)).andExpect(status().isNotFound());
 
-        mvc.perform(authed(post("/user/register"), adminToken).content(userJson(email("x"), "USER", tenantB, PASSWORD)))
+        mvc.perform(authed(post("/user/register"), adminToken).content(userJson(email("x"), "STUDENT", tenantB, PASSWORD)))
                 .andExpect(status().isForbidden());
         mvc.perform(authed(post("/user/register"), adminToken).content(userJson(email("x"), "SUPER_ADMIN", null, PASSWORD)))
                 .andExpect(status().isForbidden());
 
         MvcResult created = mvc.perform(authed(post("/user/register"), adminToken)
-                        .content(userJson(email("own"), "USER", null, PASSWORD)))
+                        .content(userJson(email("own"), "STUDENT", null, PASSWORD)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.tenantName").value(tenantA))
+                .andExpect(jsonPath("$.memberships[0].tenantName").value(tenantA))
                 .andExpect(jsonPath("$.passwordChangeRequired").value(true))
                 .andReturn();
         assertThat(created.getResponse().getContentAsString()).doesNotContain("\"password\"");
@@ -110,7 +110,7 @@ class PlatformApiIntegrationTests {
     void usersMustChangePasswordOnFirstLogin() throws Exception {
         String tenant = createTenant();
         String user = email("first");
-        createUser(superAdminToken, user, "USER", tenant, PASSWORD);
+        createUser(superAdminToken, user, "STUDENT", tenant, PASSWORD);
 
         ResultActions login = login(user, PASSWORD).andExpect(jsonPath("$.user.passwordChangeRequired").value(true));
         String token = accessToken(login);
@@ -151,7 +151,7 @@ class PlatformApiIntegrationTests {
     void forgotAndResetPasswordIsSingleUseAndRevokesSessions() throws Exception {
         String tenant = createTenant();
         String user = email("reset");
-        createUser(superAdminToken, user, "USER", tenant, PASSWORD);
+        createUser(superAdminToken, user, "STUDENT", tenant, PASSWORD);
         String oldRefresh = refreshToken(login(user, PASSWORD));
 
         forgot("nobody@telt.test").andExpect(status().isOk());
@@ -176,7 +176,7 @@ class PlatformApiIntegrationTests {
     void changePasswordValidatesCurrentPassword() throws Exception {
         String tenant = createTenant();
         String user = email("change");
-        createUser(superAdminToken, user, "USER", tenant, PASSWORD);
+        createUser(superAdminToken, user, "STUDENT", tenant, PASSWORD);
         String token = accessToken(login(user, PASSWORD));
 
         mvc.perform(authed(post("/auth/change-password"), token)
@@ -193,7 +193,7 @@ class PlatformApiIntegrationTests {
     void repeatedFailedLoginsLockTheAccountUntilAdminUnlocks() throws Exception {
         String tenant = createTenant();
         String user = email("lock");
-        String userId = createUser(superAdminToken, user, "USER", tenant, PASSWORD);
+        String userId = createUser(superAdminToken, user, "STUDENT", tenant, PASSWORD);
 
         for (int i = 0; i < 3; i++) {
             login(user, "Wrong!Pass1").andExpect(status().isUnauthorized())
@@ -211,7 +211,7 @@ class PlatformApiIntegrationTests {
     void deactivatedUsersCannotLoginOrRefresh() throws Exception {
         String tenant = createTenant();
         String user = email("inactive");
-        String userId = createUser(superAdminToken, user, "USER", tenant, PASSWORD);
+        String userId = createUser(superAdminToken, user, "STUDENT", tenant, PASSWORD);
         String refresh = refreshToken(login(user, PASSWORD));
 
         mvc.perform(authed(post("/user/" + userId + "/deactivate"), superAdminToken))
@@ -232,7 +232,7 @@ class PlatformApiIntegrationTests {
     void usersCreatedWithoutPasswordReceiveSetupLink() throws Exception {
         String tenant = createTenant();
         String user = email("nopass");
-        createUser(superAdminToken, user, "USER", tenant, null);
+        createUser(superAdminToken, user, "STUDENT", tenant, null);
         String token = notifier.lastTokenFor(user);
         assertThat(token).isNotBlank();
         reset(token, "Setup!Pass9").andExpect(status().isOk());
@@ -247,7 +247,7 @@ class PlatformApiIntegrationTests {
         mvc.perform(authed(delete("/tenant/" + UUID.randomUUID()), superAdminToken)).andExpect(status().isNotFound());
         mvc.perform(authed(get("/roles"), superAdminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", containsInAnyOrder("SUPER_ADMIN", "TENANT_ADMIN", "USER")));
+                .andExpect(jsonPath("$[*].name", hasItems("SUPER_ADMIN", "TENANT_ADMIN", "STUDENT", "EXAM_OWNER", "QUESTION_REVIEWER")));
     }
 
     private String firstLoginAndChangePassword(String email) throws Exception {

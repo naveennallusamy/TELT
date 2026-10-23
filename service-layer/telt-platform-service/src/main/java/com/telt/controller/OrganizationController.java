@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/organization")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyAuthority('SUPER_ADMIN', 'TENANT_ADMIN')")
+@PreAuthorize("hasPermission('TENANT', 'TENANT_SETTINGS_MANAGE')")
 public class OrganizationController {
 
     private final OrganizationService organizationService;

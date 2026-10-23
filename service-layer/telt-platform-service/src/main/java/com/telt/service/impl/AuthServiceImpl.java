@@ -9,7 +9,11 @@ import com.telt.entity.user.User;
 import com.telt.error.ApiException;
 import com.telt.error.ErrorCode;
 import com.telt.repository.PasswordResetTokenRepository;
+import com.telt.repository.TenantMembershipRepository;
 import com.telt.repository.UserRepository;
+import com.telt.entity.tenant.TenantMembership;
+import com.telt.service.MembershipService;
+import com.telt.util.TenantContext;
 import com.telt.security.SecureTokens;
 import com.telt.security.TokenService;
 import com.telt.service.AuthService;
@@ -21,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,6 +39,8 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final PasswordResetNotifier passwordResetNotifier;
     private final AccountProperties accountProperties;
+    private final TenantMembershipRepository membershipRepository;
+    private final MembershipService membershipService;
 
     @Override
     @Transactional(noRollbackFor = ApiException.class)
@@ -51,16 +58,58 @@ public class AuthServiceImpl implements AuthService {
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new ApiException(ErrorCode.ACCOUNT_INACTIVE, "Account is inactive");
         }
+        TenantMembership membership = null;
+        if (!user.isSuperAdmin()) {
+            List<TenantMembership> active = membershipRepository.findByUser_Id(user.getId()).stream()
+                    .filter(TenantMembership::isActive)
+                    .sorted(Comparator.comparing(TenantMembership::getCreatedOn,
+                            Comparator.nullsLast(Comparator.naturalOrder())))
+                    .toList();
+            if (active.isEmpty()) {
+                throw new ApiException(ErrorCode.ACCOUNT_INACTIVE, "Account has no active tenant membership");
+            }
+            membership = request.tenantId() == null ? active.getFirst() : active.stream()
+                    .filter(m -> m.getTenantId().equals(request.tenantId()))
+                    .findFirst()
+                    .orElseThrow(() -> ApiException.forbidden("Not a member of the requested tenant"));
+        }
         user.setFailedLoginAttempts(0);
         user.setLockedUntil(null);
         user.setLastLoginAt(now);
-        return AuthResponse.of(tokenService.issue(user));
+        return response(tokenService.issue(user, membership));
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse switchTenant(UUID userId, UUID tenantId) {
+        User user = loadUser(userId);
+        if (user.isSuperAdmin()) {
+            throw ApiException.badRequest("Super admins are not bound to a tenant");
+        }
+        TenantMembership membership = membershipRepository.findByTenantIdAndUser_Id(tenantId, userId)
+                .filter(TenantMembership::isActive)
+                .orElseThrow(() -> ApiException.forbidden("Not a member of the requested tenant"));
+        return response(tokenService.issue(user, membership));
+    }
+
+    private AuthResponse response(TokenService.IssuedTokens tokens) {
+        return AuthResponse.of(tokens, membershipService.summariesFor(tokens.user().getId()));
+    }
+
+    private User loadUser(UUID userId) {
+        return userRepository.findById(userId).orElseThrow(() -> ApiException.notFound("User"));
+    }
+
+    private TenantMembership currentMembership(User user) {
+        UUID tenantId = TenantContext.getCurrentTenant();
+        return tenantId == null ? null : membershipRepository.findByTenantIdAndUser_Id(tenantId, user.getId())
+                .filter(TenantMembership::isActive).orElse(null);
     }
 
     @Override
     @Transactional(noRollbackFor = ApiException.class)
     public AuthResponse refresh(String refreshToken) {
-        return AuthResponse.of(tokenService.rotate(refreshToken));
+        return response(tokenService.rotate(refreshToken));
     }
 
     @Override
@@ -116,7 +165,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse changePassword(UUID userId, String oldPassword, String newPassword) {
-        User user = userRepository.findById(userId).orElseThrow(() -> ApiException.notFound("User"));
+        User user = loadUser(userId);
         if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
             throw ApiException.badRequest("Current password is incorrect");
         }
@@ -125,7 +174,7 @@ public class AuthServiceImpl implements AuthService {
         }
         applyNewPassword(user, newPassword, Instant.now());
         tokenService.revokeAll(user.getId());
-        return AuthResponse.of(tokenService.issue(user));
+        return response(tokenService.issue(user, currentMembership(user)));
     }
 
     private void applyNewPassword(User user, String newPassword, Instant now) {

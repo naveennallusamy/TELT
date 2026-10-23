@@ -1,5 +1,6 @@
 package com.telt.entity.tenant;
 
+import com.telt.constants.AccessMode;
 import com.telt.util.AuditableEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -23,6 +24,13 @@ public class Tenant extends AuditableEntity {
     private String tenantName;
 
     private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AccessMode subAdminDefaultAccessMode = AccessMode.DEPARTMENT_SCOPED;
+
+    @Column(nullable = false)
+    private boolean separationOfDuties = true;
 
     @Override
     public boolean equals(Object o) {

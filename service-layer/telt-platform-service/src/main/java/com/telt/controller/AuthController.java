@@ -43,6 +43,12 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "Re-issue tokens for another tenant the user belongs to")
+    @PostMapping("/switch-tenant")
+    public AuthResponse switchTenant(@Valid @RequestBody SwitchTenantRequest request) {
+        return authService.switchTenant(TenantContext.requireCurrentUserId(), request.tenantId());
+    }
+
     @Operation(summary = "Send a password reset link (always succeeds to avoid account enumeration)")
     @PostMapping("/forgot-password")
     public MessageResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {

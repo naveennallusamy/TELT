@@ -2,8 +2,6 @@ package com.telt.entity.user;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.telt.constants.UserStatus;
-import com.telt.entity.role.Role;
-import com.telt.entity.tenant.Tenant;
 import com.telt.util.AuditableEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -23,6 +21,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @Table(name = "users")
 public class User extends AuditableEntity {
+    public static final String PLATFORM_SUPER_ADMIN = "SUPER_ADMIN";
+
     @Id
     @GeneratedValue
     @UuidGenerator(style = UuidGenerator.Style.VERSION_7)
@@ -40,13 +40,10 @@ public class User extends AuditableEntity {
     @Column(nullable = false)
     private String password;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "role_id", nullable = false)
-    private Role role;
-
-    @ManyToOne
-    @JoinColumn(name = "tenant_id")
-    private Tenant tenant;
+    /**
+     * {@code SUPER_ADMIN} for platform administrators; {@code null} for tenant members.
+     */
+    private String platformRole;
 
     private String countryCode;
 
@@ -74,11 +71,14 @@ public class User extends AuditableEntity {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UserAddressAssoc> userAddressDetails = new HashSet<>();
 
-    public User(String username, String email, long mobileNumber, Role role) {
+    public User(String username, String email, long mobileNumber) {
         this.username = username;
         this.email = email;
         this.mobileNumber = mobileNumber;
-        this.role = role;
+    }
+
+    public boolean isSuperAdmin() {
+        return PLATFORM_SUPER_ADMIN.equals(platformRole);
     }
 
     public boolean isLocked(Instant now) {

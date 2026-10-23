@@ -1,6 +1,5 @@
 package com.telt.util;
 
-import com.telt.constants.RoleEnum;
 import com.telt.error.ApiException;
 import com.telt.error.ErrorCode;
 import org.springframework.security.core.Authentication;
@@ -20,6 +19,7 @@ public final class TenantContext {
 
     public static final String TENANT_CLAIM = "tid";
     public static final String ROLES_CLAIM = "roles";
+    public static final String SUPER_ADMIN = "SUPER_ADMIN";
 
     private TenantContext() {
     }
@@ -36,14 +36,18 @@ public final class TenantContext {
         return getCurrentUserId().orElseThrow(() -> new ApiException(ErrorCode.UNAUTHORIZED, "Authentication required"));
     }
 
-    public static boolean isSuperAdmin() {
-        return hasRole(RoleEnum.SUPER_ADMIN);
+    public static UUID requireCurrentTenant() {
+        UUID tenantId = getCurrentTenant();
+        if (tenantId == null) {
+            throw ApiException.badRequest("This action requires an active tenant");
+        }
+        return tenantId;
     }
 
-    public static boolean hasRole(RoleEnum role) {
+    public static boolean isSuperAdmin() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication != null && authentication.getAuthorities().stream()
-                .anyMatch(a -> role.name().equals(a.getAuthority()));
+                .anyMatch(a -> SUPER_ADMIN.equals(a.getAuthority()));
     }
 
     private static Optional<Jwt> currentJwt() {

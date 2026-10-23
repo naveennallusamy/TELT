@@ -1,5 +1,7 @@
 package com.telt.controller;
 
+import com.telt.access.AuthorizationService;
+import com.telt.dto.access.AuthorizationResponse;
 import com.telt.dto.user.UpdateProfileRequest;
 import com.telt.dto.user.UserResponse;
 import com.telt.service.UserService;
@@ -14,11 +16,18 @@ import org.springframework.web.bind.annotation.*;
 public class MeController {
 
     private final UserService userService;
+    private final AuthorizationService authorizationService;
 
     @Operation(summary = "Current user's profile")
     @GetMapping
     public UserResponse me() {
         return userService.currentUser();
+    }
+
+    @Operation(summary = "Effective permissions of the current user in the active tenant")
+    @GetMapping("/authorization")
+    public AuthorizationResponse authorization() {
+        return AuthorizationResponse.from(authorizationService.current());
     }
 
     @Operation(summary = "Update the current user's profile")
