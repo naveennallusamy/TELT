@@ -86,3 +86,13 @@ CREATE ROLE telt_app   LOGIN PASSWORD '...';   -- used by the application at run
 | `AUTHZ_INVALIDATION_ENABLED` | `LISTEN telt_authz` for cross-instance permission-cache eviction (default `true`). |
 
 Triggers on memberships, role assignments, departments and tenant settings call `pg_notify('telt_authz', ...)`. Each instance listens on a dedicated connection and evicts the affected Caffeine entries. The 5-minute TTL still caps how stale a cached entry can get if a notification is missed.
+
+## Question banks (Phase 2a)
+
+- `GET/POST /question-banks`, `PUT /question-banks/{bankId}`: a bank belongs to the tenant and optionally to a department. Department-scoped staff can only reach banks in their department tree; banks with no department need tenant-wide access.
+- `GET/POST /question-categories`: a subject/topic tree for the tenant.
+- `POST /question-banks/{bankId}/questions`: create a question (`SINGLE_CHOICE`, `MULTIPLE_SELECT`, `NUMERICAL`, `DESCRIPTIVE`). It starts as version 1 in `DRAFT`. Content and answer key are checked against the question type.
+- Versions: `PUT /questions/{id}/versions/{no}` edits a draft. `POST /questions/{id}/versions` starts a new draft. `.../submit` moves it to `IN_REVIEW`. `.../review` with `APPROVE` or `REJECT` needs `QUESTION_REVIEW`; when the tenant's `separationOfDuties` is on, authors can't review their own versions. `POST /questions/{id}/retire` needs `QUESTION_PUBLISH`.
+- A trigger blocks edits to any version that has left `DRAFT` and only lets status move forward. The app role can't delete versions or reviews.
+- `GET /questions?bankId&categoryId&type&status&difficulty&tag&q&page&size`: paged search over each question's latest version; `q` is PostgreSQL full-text search.
+- Answer keys and explanations are only returned to callers with `ANSWER_KEY_VIEW` or `QUESTION_WRITE` on the bank.
