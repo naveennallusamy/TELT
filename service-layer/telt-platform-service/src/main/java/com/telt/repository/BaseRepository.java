@@ -1,5 +1,7 @@
 package com.telt.repository;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.NoRepositoryBean;
@@ -14,6 +16,7 @@ import java.util.Optional;
  * tenant see nothing.
  */
 @NoRepositoryBean
+@Transactional(readOnly = true)
 public interface BaseRepository<T, ID> extends JpaRepository<T, ID> {
 
     String TENANT_SCOPE = "(:#{T(com.telt.util.TenantContext).isSuperAdmin()} = true OR "

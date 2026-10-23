@@ -1,5 +1,9 @@
 package com.telt.access;
 
+import com.telt.persistence.RlsContext;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.telt.constants.AccessMode;
@@ -26,9 +30,9 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
- * Builds and caches {@link AuthorizationSnapshot}s (Caffeine, per pod). Writers that change memberships, role
- * assignments or departments must call {@link #evictUser} / {@link #evictTenant}; the TTL bounds staleness on
- * other pods until cross-pod invalidation is added.
+ * Builds and caches {@link AuthorizationSnapshot}s (Caffeine, per pod). Writers evict locally via {@link #evictUser} /
+ * {@link #evictTenant}; other instances are told through PostgreSQL notifications
+ * ({@link AuthorizationInvalidationListener}), and the TTL bounds staleness if a notification is lost.
  */
 @Service
 @RequiredArgsConstructor
@@ -41,6 +45,7 @@ public class AuthorizationService {
     private final RoleAssignmentRepository assignmentRepository;
     private final DepartmentRepository departmentRepository;
     private final RoleRepository roleRepository;
+    private final PlatformTransactionManager transactionManager;
 
     private final Cache<Key, AuthorizationSnapshot> snapshots = Caffeine.newBuilder()
             .maximumSize(50_000)
@@ -67,7 +72,7 @@ public class AuthorizationService {
     }
 
     public AuthorizationSnapshot snapshot(UUID tenantId, UUID userId) {
-        return snapshots.get(new Key(tenantId, userId), key -> build(key.tenantId(), key.userId()));
+        return snapshots.get(new Key(tenantId, userId), key -> load(key.tenantId(), key.userId()));
     }
 
     public void require(Supplier<Boolean> check) {
@@ -80,12 +85,25 @@ public class AuthorizationService {
         snapshots.invalidate(new Key(tenantId, userId));
     }
 
+    public void evictAll() {
+        snapshots.invalidateAll();
+    }
+
     public void evictTenant(UUID tenantId) {
         snapshots.asMap().keySet().removeIf(key -> key.tenantId().equals(tenantId));
     }
 
     public Set<Permission> permissionsOf(String roleName) {
         return rolePermissions().getOrDefault(roleName, Set.of());
+    }
+
+    /**
+     * Reads are filtered by the requested tenant and user explicitly, so they run with RLS bypassed.
+     */
+    private AuthorizationSnapshot load(UUID tenantId, UUID userId) {
+        TransactionTemplate readOnly = new TransactionTemplate(transactionManager);
+        readOnly.setReadOnly(true);
+        return RlsContext.asSystem(() -> readOnly.execute(status -> build(tenantId, userId)));
     }
 
     private AuthorizationSnapshot build(UUID tenantId, UUID userId) {
