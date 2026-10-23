@@ -149,3 +149,15 @@ Tenant and platform exams share the same tables. A super admin's exams belong to
   - `GET /platform/exams/{examId}/distributions` shows each tenant and its active schedule count, `PUT /platform/distributions/{id}` changes the policy, and `POST .../revoke` archives the copy and cancels its schedules that haven't started.
 - **Super-admin views** (`PLATFORM_BREAK_GLASS`): `GET /platform/tenants/{tenantId}/exams` and `.../exam-schedules`. Each read is recorded as `PLATFORM_TENANT_VIEWED` in that tenant's audit log.
 - **Future question types:** question `type`, `content` and `answerKey` are JSON, so types such as programming questions (hidden test cases run in a sandbox, graded in the background) can be added without changing the tables.
+
+## Taking exams (Phase 4a)
+
+- **Start:** `POST /exam-schedules/{scheduleId}/attempts` (`ATTEMPT_OWN`, assigned students only) starts an attempt, or returns the student's open one. It's allowed from `startsAt` until `endsAt`; with `lateEntryMinutes > 0`, only within that many minutes of the start. `maxAttempts` limits attempts per student and schedule.
+  - The schedule's effective settings are frozen on the attempt. The deadline is start + `durationMinutes`, capped by the schedule's `endsAt`.
+  - Every question of every section is included. With `shuffleQuestions`/`shuffleOptions`, question order within each section and option order are randomised once per attempt and stored, so they stay the same on every reload.
+- **Taking it** (own attempts only): `GET /me/attempts[/{id}]`, `PUT /me/attempts/{id}/answers` (autosave, `{answers:[{snapshotId, response:{selectedOptionIds|value|text}}]}`), `POST .../next-section`, `POST .../submit`.
+  - Sections are taken in order. Only the current section's questions are returned and can be answered; moving on, or the section's time limit running out, locks it.
+  - Deadlines are applied whenever the attempt is read or written: an overdue attempt becomes `EXPIRED` and is graded with the answers saved so far.
+  - Students don't see scores or answer keys (result release is Phase 4b).
+- **Grading:** on submit or expiry, each answer is graded by the `QuestionGrader` for its type (`ChoiceGrader` requires exactly the correct options, `NumericalGrader` uses the tolerance; with `negativeMarking`, a wrong answer scores minus `negativeMarks`, a blank one zero). Non-blank descriptive answers wait for an evaluator (`gradingStatus` `PENDING_MANUAL`). New types such as programming questions plug in as further `QuestionGrader` beans.
+- **Staff:** `GET /exam-schedules/{id}/attempts` (`RESPONSE_VIEW` or `EXAM_MONITOR_LIVE`) lists attempts with scores; `GET /attempts/{id}` (`RESPONSE_VIEW`) shows every answer, with answer keys if the caller may see them; `PUT /attempts/{id}/answers/{snapshotId}/grade` with `{marks, feedback?}` (`GRADE_DESCRIPTIVE`) grades a manually graded answer, up to the question's marks.

@@ -181,19 +181,7 @@ public class ExamScheduleService {
     public List<StudentExamResponse> myExams() {
         UUID tenantId = TenantContext.requireCurrentTenant();
         UUID userId = TenantContext.requireCurrentUserId();
-        TenantMembership member = membershipRepository.findByTenantIdAndUser_Id(tenantId, userId)
-                .filter(m -> m.getStatus() == RecordStatus.ACTIVE)
-                .orElseThrow(() -> new ApiException(ErrorCode.FORBIDDEN, "Access denied"));
-        List<UUID> departments = new ArrayList<>();
-        if (member.getDepartmentId() != null) {
-            departmentRepository.findByDepartmentIdAndTenantId(member.getDepartmentId(), tenantId).map(Department::getPath)
-                    .ifPresent(path -> Arrays.stream(path.split("/")).filter(p -> !p.isBlank())
-                            .map(UUID::fromString).forEach(departments::add));
-        }
-        if (departments.isEmpty()) {
-            departments.add(new UUID(0, 0));
-        }
-        List<UUID> scheduleIds = assignmentRepository.findScheduleIdsFor(tenantId, userId, departments);
+        List<UUID> scheduleIds = assignedScheduleIds(tenantId, userId);
         if (scheduleIds.isEmpty()) {
             return List.of();
         }
@@ -223,6 +211,26 @@ public class ExamScheduleService {
                     sections));
         }
         return result;
+    }
+
+    /**
+     * Schedules assigned to the student directly or through their department or any ancestor department.
+     */
+    List<UUID> assignedScheduleIds(UUID tenantId, UUID userId) {
+        TenantMembership member = membershipRepository.findByTenantIdAndUser_Id(tenantId, userId)
+                .filter(m -> m.getStatus() == RecordStatus.ACTIVE)
+                .orElseThrow(() -> new ApiException(ErrorCode.FORBIDDEN, "Access denied"));
+        List<UUID> departments = new ArrayList<>();
+        if (member.getDepartmentId() != null) {
+            departmentRepository.findByDepartmentIdAndTenantId(member.getDepartmentId(), tenantId).map(Department::getPath)
+                    .ifPresent(path -> Arrays.stream(path.split("/")).filter(p -> !p.isBlank())
+                            .map(UUID::fromString).forEach(departments::add));
+        }
+        if (departments.isEmpty()) {
+            departments.add(new UUID(0, 0));
+        }
+        List<UUID> scheduleIds = assignmentRepository.findScheduleIdsFor(tenantId, userId, departments);
+        return scheduleIds;
     }
 
     ScheduleResponse view(ExamSchedule schedule) {
