@@ -38,7 +38,7 @@ class QuestionBankIntegrationTests {
     private static final AtomicLong MOBILE = new AtomicLong(9700000000L);
     private static final String SINGLE_CHOICE = "{\"type\":\"SINGLE_CHOICE\",\"version\":{\"content\":{\"text\":\"%s\","
             + "\"options\":[{\"id\":\"a\",\"text\":\"3\"},{\"id\":\"b\",\"text\":\"4\"}]},"
-            + "\"answerKey\":{\"correctOptionIds\":[\"%s\"]},\"explanation\":\"2+2=4\",\"difficulty\":\"EASY\","
+            + "\"answerKey\":{\"correctOptionIds\":[\"%s\"]},\"explanation\":\"2+2=4\",\"defaultMarks\":1,\"difficulty\":\"EASY\","
             + "\"tags\":[\"arithmetic\"]}}";
 
     @Autowired
@@ -79,7 +79,7 @@ class QuestionBankIntegrationTests {
         call(post("/questions/" + questionId + "/versions/1/submit"), author, null).andExpect(status().isOk());
         call(put("/questions/" + questionId + "/versions/1"), author,
                 "{\"content\":{\"text\":\"changed\",\"options\":[{\"id\":\"a\",\"text\":\"1\"},{\"id\":\"b\",\"text\":\"2\"}]},"
-                        + "\"answerKey\":{\"correctOptionIds\":[\"a\"]}}").andExpect(status().isConflict());
+                        + "\"answerKey\":{\"correctOptionIds\":[\"a\"]},\"defaultMarks\":1}").andExpect(status().isConflict());
         call(post("/questions/" + questionId + "/versions/1/review"), author, "{\"decision\":\"APPROVE\"}")
                 .andExpect(status().isForbidden());
         call(post("/questions/" + questionId + "/versions/1/review"), reviewer, "{\"decision\":\"APPROVE\"}")

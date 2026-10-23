@@ -40,7 +40,7 @@ class PlatformQuestionBankIntegrationTests {
     private static final AtomicLong MOBILE = new AtomicLong(9800000000L);
     private static final String VERSION = "{\"content\":{\"text\":\"%s\","
             + "\"options\":[{\"id\":\"a\",\"text\":\"3\"},{\"id\":\"b\",\"text\":\"4\"}]},"
-            + "\"answerKey\":{\"correctOptionIds\":[\"b\"]},\"explanation\":\"2+2=4\",\"tags\":[\"platform\"]}";
+            + "\"answerKey\":{\"correctOptionIds\":[\"b\"]},\"explanation\":\"2+2=4\",\"defaultMarks\":1,\"tags\":[\"platform\"]}";
 
     @Autowired
     private MockMvc mvc;

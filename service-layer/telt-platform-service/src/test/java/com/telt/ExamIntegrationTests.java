@@ -40,7 +40,7 @@ class ExamIntegrationTests {
     private static final AtomicLong MOBILE = new AtomicLong(9300000000L);
     private static final String VERSION = "{\"content\":{\"text\":\"%s\","
             + "\"options\":[{\"id\":\"a\",\"text\":\"3\"},{\"id\":\"b\",\"text\":\"4\"}]},"
-            + "\"answerKey\":{\"correctOptionIds\":[\"b\"]},\"explanation\":\"2+2=4\"}";
+            + "\"answerKey\":{\"correctOptionIds\":[\"b\"]},\"explanation\":\"2+2=4\",\"defaultMarks\":1}";
     private static final String SETTINGS = "{\"durationMinutes\":%d,\"shuffleQuestions\":true,\"shuffleOptions\":true,"
             + "\"negativeMarking\":false,\"resultRelease\":\"MANUAL\"}";
 
@@ -83,8 +83,6 @@ class ExamIntegrationTests {
         call(post("/exams"), admin, exam("E1", 30, sections.formatted(40))).andExpect(status().isBadRequest());
         call(post("/exams"), admin, exam("E1", 30, sections.formatted(10).replace("\"grantId\":\"" + grant + "\",", "")))
                 .andExpect(status().isBadRequest());
-        call(post("/exams"), admin, exam("E1", 30, "[{\"title\":\"Pool\",\"pickCount\":3,\"items\":[{\"questionId\":\""
-                + own + "\"}]}]")).andExpect(status().isBadRequest());
 
         String examId = JsonPath.read(body(call(post("/exams"), admin, exam("E1", 30, sections.formatted(10)))
                 .andExpect(status().isCreated())

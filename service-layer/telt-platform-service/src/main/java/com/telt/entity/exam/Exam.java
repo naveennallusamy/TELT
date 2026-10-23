@@ -42,6 +42,12 @@ public class Exam extends AuditableEntity {
 
     private Integer publishedVersion;
 
+    /**
+     * Set on a tenant's read-only copy of a distributed platform exam.
+     */
+    @Column(updatable = false)
+    private UUID sourceExamId;
+
     @Version
     @Column(nullable = false)
     private long rowVersion;

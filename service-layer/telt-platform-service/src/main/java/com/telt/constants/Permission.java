@@ -41,6 +41,7 @@ public enum Permission {
     PLATFORM_TENANT_MANAGE(true),
     PLATFORM_QBANK_MANAGE(true),
     PLATFORM_QBANK_GRANT(true),
+    PLATFORM_EXAM_DISTRIBUTE(true),
     PLATFORM_BREAK_GLASS(true);
 
     private final boolean platformOnly;

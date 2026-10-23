@@ -122,7 +122,7 @@ Tenant and platform exams share the same tables. A super admin's exams belong to
 
 - **Structure:** an exam has numbered versions. Each version has `settings` and ordered `sections` (segments), and each section lists `items`. An exam with one section runs in a single go.
   - `settings`: `durationMinutes` (required), `maxAttempts` (default 1), `shuffleQuestions`, `shuffleOptions`, `negativeMarking`, `passMarks`, `instructions`, `resultRelease` (`IMMEDIATE`, `AFTER_WINDOW` (default) or `MANUAL`).
-  - section: `title`, optional `timeLimitMinutes` (the sum may not exceed `durationMinutes`), optional `pickCount` (each attempt draws N of the listed items; they must carry equal marks).
+  - section: `title` and optional `timeLimitMinutes` (the sum may not exceed `durationMinutes`). Every student gets all of a section's items; with `shuffleQuestions`/`shuffleOptions` the order is shuffled per student when they start (Phase 4).
   - item: `questionId`, plus `grantId` for a granted platform question, and optional `marks` and `negativeMarks` that override the question's defaults.
 - **Endpoints:**
   - `POST /exams` creates an exam with version 1 as a draft, and `GET /exams` and `GET /exams/{id}` read exams.
@@ -134,3 +134,18 @@ Tenant and platform exams share the same tables. A super admin's exams belong to
   - Answer keys of granted questions stay hidden from tenant staff unless the grant had `answerKeysVisible`.
   - Publishing a new version retires the previous one.
 - **Database enforcement:** settings, sections and items can't change once a version leaves `DRAFT`. Snapshots can't be updated, and all exam tables have the `tenant_isolation` row-level security policy.
+- **Question marks:** `defaultMarks` is required when writing a question version (`negativeMarks` defaults to 0). Exam items may override both.
+
+## Schedules, assignment and platform exam distribution (Phase 3b)
+
+- **Schedules** (`EXAM_ASSIGN`): `POST /exam-schedules` with `{examId, title, startsAt, endsAt, timeZone, lateEntryMinutes?, overrides?}` schedules the exam's published version. Later versions don't affect existing schedules.
+  - `overrides` may change `durationMinutes`, `maxAttempts`, `resultRelease`, `shuffleQuestions`, `shuffleOptions` and `instructions` for this sitting; responses include the resulting `effectiveSettings`.
+  - `GET /exam-schedules[?examId=]`, `GET/PUT /exam-schedules/{id}` (changes only before the start), `POST /exam-schedules/{id}/cancel`.
+- **Assignment:** `POST /exam-schedules/{id}/assignments` with `{userIds?, departmentIds?}` assigns students and departments (including sub-departments); `GET` lists and `DELETE .../assignments/{assignmentId}` removes. Department-scoped staff can only assign within their departments.
+- **Students:** `GET /me/exams` (`ATTEMPT_OWN`) lists upcoming and running schedules assigned to the caller, with effective settings and per-section question counts, but no questions.
+- **Platform exams** (super admin, `PLATFORM_EXAM_DISTRIBUTE`):
+  - `POST /platform/exams/{examId}/distributions` with `{tenantId, overridePolicy?, answerKeysVisible?}` copies the published version into the tenant as a read-only exam (`sourceExamId` set). Sending again after publishing a new version adds it to the copy and retires the old one.
+  - `overridePolicy` flags (`duration`, `maxAttempts`, `resultRelease`, `shuffle`, `instructions`, `lateEntry`, all off by default) say which overrides the tenant may use in its schedules. The window and time zone can always be set; questions and marks never change.
+  - `GET /platform/exams/{examId}/distributions` shows each tenant and its active schedule count, `PUT /platform/distributions/{id}` changes the policy, and `POST .../revoke` archives the copy and cancels its schedules that haven't started.
+- **Super-admin views** (`PLATFORM_BREAK_GLASS`): `GET /platform/tenants/{tenantId}/exams` and `.../exam-schedules`. Each read is recorded as `PLATFORM_TENANT_VIEWED` in that tenant's audit log.
+- **Future question types:** question `type`, `content` and `answerKey` are JSON, so types such as programming questions (hidden test cases run in a sandbox, graded in the background) can be added without changing the tables.

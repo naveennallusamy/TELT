@@ -86,6 +86,7 @@ public class ExamService {
     @Transactional
     public ExamVersionResponse newDraft(UUID examId, ExamVersionRequest request) {
         Exam exam = load(examId, Permission.EXAM_EDIT);
+        requireAuthored(exam);
         requireActive(exam);
         ExamVersion latest = version(exam, exam.getLatestVersion());
         if (latest.getStatus() == ExamVersionStatus.DRAFT || latest.getStatus() == ExamVersionStatus.IN_REVIEW) {
@@ -101,6 +102,7 @@ public class ExamService {
     @Transactional
     public ExamVersionResponse updateDraft(UUID examId, int versionNo, ExamVersionRequest request) {
         Exam exam = load(examId, Permission.EXAM_EDIT);
+        requireAuthored(exam);
         ExamVersion version = version(exam, versionNo);
         if (version.getStatus() != ExamVersionStatus.DRAFT) {
             throw ApiException.conflict("Only draft versions can be edited; create a new version instead");
@@ -118,6 +120,7 @@ public class ExamService {
     @Transactional
     public ExamVersionResponse submit(UUID examId, int versionNo) {
         Exam exam = load(examId, Permission.EXAM_EDIT);
+        requireAuthored(exam);
         requireActive(exam);
         ExamVersion version = version(exam, versionNo);
         if (version.getStatus() != ExamVersionStatus.DRAFT) {
@@ -135,6 +138,7 @@ public class ExamService {
     @Transactional
     public ExamVersionResponse review(UUID examId, int versionNo, ReviewRequest request) {
         Exam exam = load(examId, Permission.EXAM_REVIEW);
+        requireAuthored(exam);
         requireActive(exam);
         ExamVersion version = version(exam, versionNo);
         if (version.getStatus() != ExamVersionStatus.IN_REVIEW) {
@@ -172,6 +176,7 @@ public class ExamService {
     @Transactional
     public ExamVersionResponse publish(UUID examId, int versionNo) {
         Exam exam = load(examId, Permission.EXAM_PUBLISH);
+        requireAuthored(exam);
         requireActive(exam);
         ExamVersion version = version(exam, versionNo);
         if (version.getStatus() != ExamVersionStatus.APPROVED) {
@@ -265,16 +270,12 @@ public class ExamService {
             if (sr.timeLimitMinutes() != null) {
                 timed += sr.timeLimitMinutes();
             }
-            if (sr.pickCount() != null && sr.pickCount() > sr.items().size()) {
-                throw ApiException.badRequest("Section '" + sr.title() + "' picks more questions than it lists");
-            }
             ExamSection section = new ExamSection();
             section.setTenantId(exam.getTenantId());
             section.setExamId(exam.getExamId());
             section.setVersionNo(version.getVersionNo());
             section.setPosition(++sectionNo);
             section.setTitle(sr.title());
-            section.setPickCount(sr.pickCount());
             section.setTimeLimitMinutes(sr.timeLimitMinutes());
             sectionRepository.saveAndFlush(section);
             List<BigDecimal> marks = new ArrayList<>();
@@ -298,15 +299,7 @@ public class ExamService {
                 itemRepository.save(item);
                 marks.add(ir.marks() != null ? ir.marks() : source.version().getDefaultMarks());
             }
-            if (sr.pickCount() != null) {
-                if (marks.stream().distinct().count() > 1) {
-                    throw ApiException.badRequest("Questions in pick-N section '" + sr.title()
-                            + "' must carry equal marks so every student gets the same total");
-                }
-                total = total.add(marks.getFirst().multiply(BigDecimal.valueOf(sr.pickCount())));
-            } else {
-                total = total.add(marks.stream().reduce(BigDecimal.ZERO, BigDecimal::add));
-            }
+            total = total.add(marks.stream().reduce(BigDecimal.ZERO, BigDecimal::add));
         }
         if (timed > settings.durationMinutes()) {
             throw ApiException.badRequest("Section time limits exceed the exam duration");
@@ -398,8 +391,14 @@ public class ExamService {
         List<ExamSection> sections = sections(exam, version.getVersionNo());
         Map<UUID, List<ExamItem>> items = items(exam, sections);
         return ExamVersionResponse.from(version, sections.stream().map(s -> new SectionResponse(s.getSectionId(),
-                s.getPosition(), s.getTitle(), s.getPickCount(), s.getTimeLimitMinutes(),
+                s.getPosition(), s.getTitle(), s.getTimeLimitMinutes(),
                 items.getOrDefault(s.getSectionId(), List.of()).stream().map(ItemResponse::from).toList())).toList());
+    }
+
+    private static void requireAuthored(Exam exam) {
+        if (exam.getSourceExamId() != null) {
+            throw ApiException.conflict("Distributed platform exams are read-only");
+        }
     }
 
     private static void requireActive(Exam exam) {
