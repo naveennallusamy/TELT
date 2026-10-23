@@ -96,3 +96,22 @@ Triggers on memberships, role assignments, departments and tenant settings call 
 - A trigger blocks edits to any version that has left `DRAFT` and only lets status move forward. The app role can't delete versions or reviews.
 - `GET /questions?bankId&categoryId&type&status&difficulty&tag&q&page&size`: paged search over each question's latest version; `q` is PostgreSQL full-text search.
 - Answer keys and explanations are only returned to callers with `ANSWER_KEY_VIEW` or `QUESTION_WRITE` on the bank.
+
+## Platform question banks (Phase 2b)
+
+Platform content uses the same bank, question, version and review tables, owned by the reserved tenant
+`00000000-0000-0000-0000-000000000001` (`__platform__`). It is hidden from `/tenant` and can't have members.
+
+- **Authoring:** a super admin uses the normal `/question-banks` and `/questions` endpoints; with no active tenant, their content goes to the platform tenant. The platform tenant has `separationOfDuties` off, so a single super admin can approve their own questions.
+- **Releases:** `POST /platform/question-banks/{bankId}/releases` freezes the approved version of every active question as release N. Releases can't be changed or deleted. `GET` on the same path lists them.
+- **Grants:** `POST /platform/grants` with `{bankId, tenantId, settings}`. `settings` has these fields:
+  - `releasePolicy`: `PINNED` (with `releaseId`) or `LATEST`.
+  - `allowClone` and `answerKeysVisible`, both off by default. `allowClone` requires `answerKeysVisible`.
+  - `validFrom` and `validUntil`: optional validity window.
+
+  `PUT /platform/grants/{id}` replaces the settings, `POST /platform/grants/{id}/revoke` revokes a grant, and `GET /platform/grants?tenantId&bankId` lists grants.
+- **Tenant side (read-only):**
+  - `GET /granted-banks` lists the tenant's grants.
+  - `GET /granted-banks/{grantId}/questions[/{questionId}]` reads the release a grant currently exposes. Answer keys are only returned if the grant allows it and the caller has `ANSWER_KEY_VIEW`.
+  - `POST /granted-banks/{grantId}/questions/{questionId}/clone` with `{bankId, categoryId?}` copies a question into a tenant bank as an editable draft. It records `sourceQuestionId` and `sourceVersionNo`.
+- **Database enforcement:** row-level security lets a tenant read only the platform banks, questions and versions in releases it is currently granted. Inserts, updates and deletes of platform rows by tenants are still blocked by the `tenant_isolation` policy.

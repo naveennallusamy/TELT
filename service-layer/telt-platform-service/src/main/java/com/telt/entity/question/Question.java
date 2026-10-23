@@ -41,6 +41,15 @@ public class Question extends AuditableEntity {
 
     private Integer approvedVersion;
 
+    @Column(updatable = false)
+    private UUID sourceQuestionId;
+
+    @Column(updatable = false)
+    private Integer sourceVersionNo;
+
+    @Column(updatable = false)
+    private UUID sourceGrantId;
+
     @Version
     @Column(nullable = false)
     private long rowVersion;

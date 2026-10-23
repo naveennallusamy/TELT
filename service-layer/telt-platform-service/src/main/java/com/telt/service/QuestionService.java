@@ -36,7 +36,7 @@ public class QuestionService {
 
     @Transactional
     public QuestionResponse create(UUID bankId, CreateQuestionRequest request) {
-        UUID tenantId = TenantContext.requireCurrentTenant();
+        UUID tenantId = access.ownerTenant();
         QuestionBank bank = bankService.loadActive(tenantId, bankId);
         access.require(Permission.QUESTION_WRITE, bank);
         if (request.categoryId() != null) {
@@ -167,7 +167,7 @@ public class QuestionService {
 
     @Transactional(readOnly = true)
     public PageResponse<QuestionSummary> search(QuestionSearch search) {
-        UUID tenantId = TenantContext.requireCurrentTenant();
+        UUID tenantId = access.ownerTenant();
         int size = Math.clamp(search.size(), 1, MAX_PAGE_SIZE);
         int page = Math.max(search.page(), 0);
         List<UUID> bankIds = access.visible(bankRepository.findByTenantIdOrderByName(tenantId)).stream()
@@ -305,7 +305,7 @@ public class QuestionService {
     }
 
     private Loaded load(UUID questionId, Permission permission) {
-        UUID tenantId = TenantContext.requireCurrentTenant();
+        UUID tenantId = access.ownerTenant();
         Question question = questionRepository.findByQuestionIdAndTenantId(questionId, tenantId)
                 .orElseThrow(() -> ApiException.notFound("Question"));
         QuestionBank bank = bankService.load(tenantId, question.getBankId());
