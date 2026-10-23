@@ -32,7 +32,5 @@ public class ExamSection {
     @Column(nullable = false)
     private String title;
 
-    private Integer pickCount;
-
     private Integer timeLimitMinutes;
 }

@@ -14,6 +14,6 @@ import java.util.List;
 
 public record QuestionVersionRequest(@NotNull @Valid QuestionContent content, @Valid AnswerKey answerKey,
                                      @Size(max = 10000) String explanation,
-                                     @DecimalMin("0") BigDecimal defaultMarks, @DecimalMin("0") BigDecimal negativeMarks,
+                                     @NotNull @DecimalMin("0") BigDecimal defaultMarks, @DecimalMin("0") BigDecimal negativeMarks,
                                      Difficulty difficulty, @Size(max = 20) List<@NotBlank @Size(max = 50) String> tags) {
 }

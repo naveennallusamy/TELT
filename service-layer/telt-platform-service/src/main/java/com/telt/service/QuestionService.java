@@ -249,7 +249,7 @@ public class QuestionService {
         version.setContent(request.content());
         version.setAnswerKey(request.answerKey());
         version.setExplanation(request.explanation());
-        version.setDefaultMarks(request.defaultMarks() == null ? BigDecimal.ONE : request.defaultMarks());
+        version.setDefaultMarks(request.defaultMarks());
         version.setNegativeMarks(request.negativeMarks() == null ? BigDecimal.ZERO : request.negativeMarks());
         version.setDifficulty(request.difficulty());
         version.setTags(request.tags() == null ? new ArrayList<>() : new ArrayList<>(new LinkedHashSet<>(request.tags())));
