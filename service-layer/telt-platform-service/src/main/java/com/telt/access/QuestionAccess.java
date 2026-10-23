@@ -1,15 +1,18 @@
 package com.telt.access;
 
 import com.telt.constants.Permission;
+import com.telt.constants.PlatformTenant;
 import com.telt.entity.question.QuestionBank;
 import com.telt.error.ApiException;
 import com.telt.error.ErrorCode;
+import com.telt.util.TenantContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Question-bank permissions are evaluated against the bank's department: department-scoped staff reach banks in
@@ -20,6 +23,18 @@ import java.util.Optional;
 public class QuestionAccess {
 
     private final AuthorizationService authorizationService;
+
+    /**
+     * Tenant whose banks the caller authors: their active tenant, or the platform tenant for a super admin
+     * without one.
+     */
+    public UUID ownerTenant() {
+        UUID tenantId = TenantContext.getCurrentTenant();
+        if (tenantId == null && TenantContext.isSuperAdmin()) {
+            return PlatformTenant.ID;
+        }
+        return TenantContext.requireCurrentTenant();
+    }
 
     public boolean can(Permission permission, QuestionBank bank) {
         AuthorizationSnapshot snapshot = authorizationService.current();

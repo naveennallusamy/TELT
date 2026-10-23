@@ -1,5 +1,6 @@
 package com.telt.service.impl;
 
+import com.telt.constants.PlatformTenant;
 import com.telt.dto.tenant.CreateTenantRequest;
 import com.telt.dto.tenant.TenantResponse;
 import com.telt.entity.tenant.Tenant;
@@ -36,7 +37,7 @@ public class TenantServiceImpl implements TenantService {
     @Override
     @Transactional(readOnly = true)
     public List<TenantResponse> findAll() {
-        return tenantRepository.findAll().stream().map(TenantResponse::from).toList();
+        return tenantRepository.findAll().stream().filter(t -> !PlatformTenant.is(t.getTenantId())).map(TenantResponse::from).toList();
     }
 
     @Override
@@ -64,6 +65,7 @@ public class TenantServiceImpl implements TenantService {
                 return null;
             }
             return tenantRepository.findByTenantName(requestedTenantName.trim())
+                    .filter(t -> !PlatformTenant.is(t.getTenantId()))
                     .orElseThrow(() -> ApiException.notFound("Tenant"));
         }
         UUID ownTenantId = TenantContext.getCurrentTenant();
@@ -78,6 +80,7 @@ public class TenantServiceImpl implements TenantService {
     }
 
     private Tenant load(UUID tenantId) {
-        return tenantRepository.findById(tenantId).orElseThrow(() -> ApiException.notFound("Tenant"));
+        return tenantRepository.findById(tenantId).filter(t -> !PlatformTenant.is(t.getTenantId()))
+                .orElseThrow(() -> ApiException.notFound("Tenant"));
     }
 }

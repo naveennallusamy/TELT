@@ -11,7 +11,6 @@ import com.telt.error.ApiException;
 import com.telt.repository.DepartmentRepository;
 import com.telt.repository.QuestionBankRepository;
 import com.telt.repository.QuestionCategoryRepository;
-import com.telt.util.TenantContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,13 +32,13 @@ public class QuestionBankService {
 
     @Transactional(readOnly = true)
     public List<BankResponse> list() {
-        return access.visible(bankRepository.findByTenantIdOrderByName(TenantContext.requireCurrentTenant())).stream()
+        return access.visible(bankRepository.findByTenantIdOrderByName(access.ownerTenant())).stream()
                 .map(BankResponse::from).toList();
     }
 
     @Transactional
     public BankResponse create(CreateBankRequest request) {
-        UUID tenantId = TenantContext.requireCurrentTenant();
+        UUID tenantId = access.ownerTenant();
         QuestionBank bank = new QuestionBank();
         bank.setTenantId(tenantId);
         if (request.departmentId() != null) {
@@ -61,7 +60,7 @@ public class QuestionBankService {
 
     @Transactional
     public BankResponse update(UUID bankId, UpdateBankRequest request) {
-        UUID tenantId = TenantContext.requireCurrentTenant();
+        UUID tenantId = access.ownerTenant();
         QuestionBank bank = load(tenantId, bankId);
         access.require(Permission.QBANK_CREATE, bank);
         Map<String, Object> changes = new LinkedHashMap<>();
@@ -88,13 +87,13 @@ public class QuestionBankService {
 
     @Transactional(readOnly = true)
     public List<CategoryResponse> categories() {
-        return categoryRepository.findByTenantIdOrderByPath(TenantContext.requireCurrentTenant()).stream()
+        return categoryRepository.findByTenantIdOrderByPath(access.ownerTenant()).stream()
                 .map(CategoryResponse::from).toList();
     }
 
     @Transactional
     public CategoryResponse createCategory(CreateCategoryRequest request) {
-        UUID tenantId = TenantContext.requireCurrentTenant();
+        UUID tenantId = access.ownerTenant();
         String parentPath = "/";
         if (request.parentCategoryId() != null) {
             parentPath = category(tenantId, request.parentCategoryId()).getPath();
