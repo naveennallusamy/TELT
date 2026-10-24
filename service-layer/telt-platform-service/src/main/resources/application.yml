@@ -31,6 +31,9 @@ management:
         include: health,info
 
 telt:
+  attempts:
+    # How often overdue, untouched attempts are closed and graded in the background.
+    expiry-sweep-interval: ${ATTEMPT_EXPIRY_SWEEP_INTERVAL:60s}
   security:
     jwt:
       issuer: ${JWT_ISSUER:telt-platform}

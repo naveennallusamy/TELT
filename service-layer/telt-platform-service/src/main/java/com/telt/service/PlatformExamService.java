@@ -33,6 +33,7 @@ public class PlatformExamService {
     private final TenantRepository tenantRepository;
     private final ExamScheduleService scheduleService;
     private final AuditService auditService;
+    private final AttemptService attemptService;
 
     /**
      * Copies the platform exam's published version (sections and question snapshots) into the tenant. Sending again
@@ -149,6 +150,20 @@ public class PlatformExamService {
         requireTenant(tenantId);
         auditService.record(tenantId, "PLATFORM_TENANT_VIEWED", "TENANT", tenantId, Map.of("view", "exam-schedules"));
         return scheduleRepository.findByTenantIdOrderByStartsAt(tenantId).stream().map(scheduleService::view).toList();
+    }
+
+    @Transactional
+    public List<com.telt.dto.attempt.AttemptSummary> tenantAttempts(UUID tenantId, UUID scheduleId) {
+        requireTenant(tenantId);
+        auditService.record(tenantId, "PLATFORM_TENANT_VIEWED", "EXAM_SCHEDULE", scheduleId, Map.of("view", "attempts"));
+        return attemptService.summaries(tenantId, scheduleId);
+    }
+
+    @Transactional
+    public com.telt.dto.attempt.AttemptReviewResponse tenantAttempt(UUID tenantId, UUID attemptId) {
+        requireTenant(tenantId);
+        auditService.record(tenantId, "PLATFORM_TENANT_VIEWED", "EXAM_ATTEMPT", attemptId, Map.of("view", "attempt"));
+        return attemptService.review(tenantId, attemptId);
     }
 
     private void copyVersion(Exam source, int versionNo, Exam copy, boolean answerKeysVisible) {

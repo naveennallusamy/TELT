@@ -28,6 +28,19 @@ public class AttemptController {
         return attemptService.forSchedule(scheduleId);
     }
 
+    @PutMapping("/exam-schedules/{scheduleId}/accommodations/{userId}")
+    @PreAuthorize("hasPermission(null, 'ATTEMPT_ACCOMMODATE')")
+    public com.telt.dto.result.AccommodationResponse accommodate(@PathVariable UUID scheduleId, @PathVariable UUID userId,
+                                                                 @Valid @RequestBody com.telt.dto.result.AccommodationRequest request) {
+        return attemptService.accommodate(scheduleId, userId, request);
+    }
+
+    @GetMapping("/exam-schedules/{scheduleId}/accommodations")
+    @PreAuthorize("hasPermission(null, 'ATTEMPT_ACCOMMODATE') or hasPermission(null, 'EXAM_MONITOR_LIVE')")
+    public List<com.telt.dto.result.AccommodationResponse> accommodations(@PathVariable UUID scheduleId) {
+        return attemptService.accommodations(scheduleId);
+    }
+
     @GetMapping("/me/attempts")
     @PreAuthorize("hasPermission(null, 'ATTEMPT_OWN')")
     public List<AttemptResponse> mine() {

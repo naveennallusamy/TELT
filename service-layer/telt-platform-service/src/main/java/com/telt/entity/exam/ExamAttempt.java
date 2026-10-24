@@ -65,6 +65,9 @@ public class ExamAttempt {
     @Column(nullable = false)
     private Instant sectionStartedAt;
 
+    @Column(nullable = false)
+    private int extraMinutes;
+
     private Instant submittedAt;
 
     private BigDecimal score;

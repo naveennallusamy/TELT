@@ -5,6 +5,7 @@ import com.telt.entity.exam.ExamAttempt;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,4 +23,6 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, UUID> 
     List<ExamAttempt> findByTenantIdAndUserIdOrderByStartedAtDesc(UUID tenantId, UUID userId);
 
     List<ExamAttempt> findByTenantIdAndScheduleIdOrderByStartedAt(UUID tenantId, UUID scheduleId);
+
+    List<ExamAttempt> findTop200ByStatusAndDeadlineAtBeforeOrderByDeadlineAt(AttemptStatus status, Instant at);
 }

@@ -53,6 +53,20 @@ public class PlatformExamController {
         return platformExamService.tenantExams(tenantId);
     }
 
+    @GetMapping("/tenants/{tenantId}/exam-schedules/{scheduleId}/attempts")
+    @PreAuthorize("hasAuthority('SUPER_ADMIN') and hasPermission(null, 'PLATFORM_BREAK_GLASS')")
+    public List<com.telt.dto.attempt.AttemptSummary> tenantAttempts(@PathVariable UUID tenantId,
+                                                                    @PathVariable UUID scheduleId) {
+        return platformExamService.tenantAttempts(tenantId, scheduleId);
+    }
+
+    @GetMapping("/tenants/{tenantId}/attempts/{attemptId}")
+    @PreAuthorize("hasAuthority('SUPER_ADMIN') and hasPermission(null, 'PLATFORM_BREAK_GLASS')")
+    public com.telt.dto.attempt.AttemptReviewResponse tenantAttempt(@PathVariable UUID tenantId,
+                                                                    @PathVariable UUID attemptId) {
+        return platformExamService.tenantAttempt(tenantId, attemptId);
+    }
+
     @GetMapping("/tenants/{tenantId}/exam-schedules")
     @PreAuthorize("hasAuthority('SUPER_ADMIN') and hasPermission(null, 'PLATFORM_BREAK_GLASS')")
     public List<ScheduleResponse> tenantSchedules(@PathVariable UUID tenantId) {
