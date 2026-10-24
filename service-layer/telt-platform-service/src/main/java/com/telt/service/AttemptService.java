@@ -3,6 +3,9 @@ package com.telt.service;
 import com.telt.access.ExamAccess;
 import com.telt.constants.*;
 import com.telt.dto.attempt.*;
+import com.telt.dto.result.AccommodationRequest;
+import com.telt.dto.result.AccommodationResponse;
+import com.telt.dto.result.StudentResultResponse;
 import com.telt.entity.exam.*;
 import com.telt.entity.question.QuestionOption;
 import com.telt.error.ApiException;
@@ -42,6 +45,8 @@ public class AttemptService {
     private final ExamQuestionSnapshotRepository snapshotRepository;
     private final ExamScheduleService scheduleService;
     private final GraderRegistry graders;
+    private final ExamAccommodationRepository accommodationRepository;
+    private final TenantMembershipRepository membershipRepository;
     private final ExamAccess access;
     private final AuditService auditService;
 
@@ -98,8 +103,12 @@ public class AttemptService {
         attempt.setAttemptNo((int) previous + 1);
         attempt.setSettings(settings);
         attempt.setStartedAt(now);
-        Instant byDuration = now.plus(Duration.ofMinutes(settings.durationMinutes()));
-        attempt.setDeadlineAt(byDuration.isBefore(schedule.getEndsAt()) ? byDuration : schedule.getEndsAt());
+        int extra = accommodationRepository.findByTenantIdAndScheduleIdAndUserId(tenantId, scheduleId, userId)
+                .map(ExamAccommodation::getExtraMinutes).orElse(0);
+        attempt.setExtraMinutes(extra);
+        Instant byDuration = now.plus(Duration.ofMinutes(settings.durationMinutes() + extra));
+        Instant windowEnd = schedule.getEndsAt().plus(Duration.ofMinutes(extra));
+        attempt.setDeadlineAt(byDuration.isBefore(windowEnd) ? byDuration : windowEnd);
         attempt.setSectionStartedAt(now);
         attempt.setMaxScore(version.getTotalMarks() == null ? BigDecimal.ZERO : version.getTotalMarks());
         attemptRepository.saveAndFlush(attempt);
@@ -255,6 +264,114 @@ public class AttemptService {
         auditService.record(ctx.attempt().getTenantId(), "ANSWER_GRADED", "EXAM_ATTEMPT", attemptId,
                 Map.of("snapshotId", snapshotId, "marks", request.marks()));
         return review(ctx);
+    }
+
+    /**
+     * Grants or changes a student's extra time; an attempt already in progress gets the difference added.
+     */
+    @Transactional
+    public AccommodationResponse accommodate(UUID scheduleId, UUID userId, AccommodationRequest request) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        ExamSchedule schedule = scheduleRepository.findByScheduleIdAndTenantId(scheduleId, tenantId)
+                .orElseThrow(() -> ApiException.notFound("Schedule"));
+        Exam exam = examRepository.findByExamIdAndTenantId(schedule.getExamId(), tenantId).orElseThrow();
+        if (!access.can(Permission.ATTEMPT_ACCOMMODATE, exam)) {
+            throw ApiException.notFound("Schedule");
+        }
+        membershipRepository.findByTenantIdAndUser_Id(tenantId, userId)
+                .filter(m -> m.getMembershipType() == MembershipType.STUDENT)
+                .orElseThrow(() -> ApiException.badRequest("User " + userId + " is not a student of this tenant"));
+        ExamAccommodation accommodation = accommodationRepository.findByTenantIdAndScheduleIdAndUserId(tenantId,
+                scheduleId, userId).orElseGet(() -> {
+            ExamAccommodation a = new ExamAccommodation();
+            a.setTenantId(tenantId);
+            a.setScheduleId(scheduleId);
+            a.setUserId(userId);
+            return a;
+        });
+        accommodation.setExtraMinutes(request.extraMinutes());
+        accommodation.setReason(request.reason());
+        accommodation.setGrantedBy(TenantContext.requireCurrentUserId());
+        accommodation.setGrantedAt(Instant.now());
+        accommodationRepository.save(accommodation);
+        attemptRepository.findByTenantIdAndScheduleIdAndUserIdAndStatus(tenantId, scheduleId, userId,
+                AttemptStatus.IN_PROGRESS).ifPresent(a -> {
+            Context ctx = context(a);
+            refresh(ctx);
+            if (a.getStatus() == AttemptStatus.IN_PROGRESS) {
+                a.setDeadlineAt(a.getDeadlineAt().plus(Duration.ofMinutes(request.extraMinutes() - a.getExtraMinutes())));
+                a.setExtraMinutes(request.extraMinutes());
+            }
+        });
+        auditService.record(tenantId, "ATTEMPT_ACCOMMODATED", "EXAM_SCHEDULE", scheduleId,
+                Map.of("userId", userId, "extraMinutes", request.extraMinutes()));
+        return AccommodationResponse.from(accommodation);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AccommodationResponse> accommodations(UUID scheduleId) {
+        UUID tenantId = TenantContext.requireCurrentTenant();
+        ExamSchedule schedule = scheduleRepository.findByScheduleIdAndTenantId(scheduleId, tenantId)
+                .orElseThrow(() -> ApiException.notFound("Schedule"));
+        Exam exam = examRepository.findByExamIdAndTenantId(schedule.getExamId(), tenantId).orElseThrow();
+        if (!access.can(Permission.ATTEMPT_ACCOMMODATE, exam) && !access.can(Permission.EXAM_MONITOR_LIVE, exam)) {
+            throw ApiException.notFound("Schedule");
+        }
+        return accommodationRepository.findByTenantIdAndScheduleIdOrderByGrantedAt(tenantId, scheduleId).stream()
+                .map(AccommodationResponse::from).toList();
+    }
+
+    /**
+     * Used by the background sweeper (runs with RLS bypass). Returns whether the attempt was closed.
+     */
+    @Transactional
+    public boolean expireIfOverdue(UUID attemptId) {
+        ExamAttempt attempt = attemptRepository.findById(attemptId).orElse(null);
+        if (attempt == null || attempt.getStatus() != AttemptStatus.IN_PROGRESS) {
+            return false;
+        }
+        refresh(context(attempt));
+        return attempt.getStatus() != AttemptStatus.IN_PROGRESS;
+    }
+
+    /**
+     * All attempts of a schedule with overdue ones closed; no access check.
+     */
+    @Transactional
+    public List<ExamAttempt> closeOverdue(UUID tenantId, UUID scheduleId) {
+        List<ExamAttempt> attempts = attemptRepository.findByTenantIdAndScheduleIdOrderByStartedAt(tenantId, scheduleId);
+        attempts.forEach(a -> refresh(context(a)));
+        return attempts;
+    }
+
+    /**
+     * Super-admin view of a tenant's attempts; the caller checks platform permission and audits.
+     */
+    @Transactional
+    public List<AttemptSummary> summaries(UUID tenantId, UUID scheduleId) {
+        return closeOverdue(tenantId, scheduleId).stream().map(a -> summary(context(a))).toList();
+    }
+
+    @Transactional
+    public AttemptReviewResponse review(UUID tenantId, UUID attemptId) {
+        ExamAttempt attempt = attemptRepository.findByAttemptIdAndTenantId(attemptId, tenantId)
+                .orElseThrow(() -> ApiException.notFound("Attempt"));
+        Context ctx = context(attempt);
+        refresh(ctx);
+        return review(ctx);
+    }
+
+    StudentResultResponse result(ExamAttempt attempt, Exam exam) {
+        Context ctx = context(attempt);
+        BigDecimal pass = attempt.getSettings().passMarks();
+        List<StudentResultResponse.Answer> answers = ctx.answers().stream().map(a -> {
+            ExamQuestionSnapshot q = ctx.snapshots().get(a.getSnapshotId());
+            return new StudentResultResponse.Answer(a.getSectionIndex(), a.getPosition(), q.getQuestionType(),
+                    q.getContent().text(), q.getMarks(), a.getMarksAwarded(), a.getFeedback());
+        }).toList();
+        return new StudentResultResponse(attempt.getAttemptId(), attempt.getScheduleId(), attempt.getExamId(),
+                exam.getTitle(), attempt.getAttemptNo(), attempt.getStatus(), attempt.getSubmittedAt(), attempt.getScore(),
+                attempt.getMaxScore(), pass, pass == null ? null : attempt.getScore().compareTo(pass) >= 0, answers);
     }
 
     private record Context(ExamAttempt attempt, List<ExamSection> sections, Map<UUID, ExamQuestionSnapshot> snapshots,

@@ -161,3 +161,18 @@ Tenant and platform exams share the same tables. A super admin's exams belong to
   - Students don't see scores or answer keys (result release is Phase 4b).
 - **Grading:** on submit or expiry, each answer is graded by the `QuestionGrader` for its type (`ChoiceGrader` requires exactly the correct options, `NumericalGrader` uses the tolerance; with `negativeMarking`, a wrong answer scores minus `negativeMarks`, a blank one zero). Non-blank descriptive answers wait for an evaluator (`gradingStatus` `PENDING_MANUAL`). New types such as programming questions plug in as further `QuestionGrader` beans.
 - **Staff:** `GET /exam-schedules/{id}/attempts` (`RESPONSE_VIEW` or `EXAM_MONITOR_LIVE`) lists attempts with scores; `GET /attempts/{id}` (`RESPONSE_VIEW`) shows every answer, with answer keys if the caller may see them; `PUT /attempts/{id}/answers/{snapshotId}/grade` with `{marks, feedback?}` (`GRADE_DESCRIPTIVE`) grades a manually graded answer, up to the question's marks.
+
+## Results, extra time and monitoring (Phase 4b)
+
+- **When students see results** (`GET /me/results`, `RESULT_VIEW_OWN`; marks and feedback per question, never answer keys). An attempt is shown only once it's closed and fully graded, and then:
+  - `IMMEDIATE`: right away.
+  - `AFTER_WINDOW`: once the schedule's `endsAt` has passed.
+  - `MANUAL`: once the schedule's results are published:
+    1. `POST /exam-schedules/{id}/results/submit` (`RESULT_SUBMIT_FOR_APPROVAL`) needs the window closed, no attempt in progress and no answer waiting for manual grading.
+    2. `POST .../results/decision` with `{decision: APPROVE|REJECT, comment?}` (`RESULT_APPROVE`). With separation of duties on, the submitter can't approve. A rejection lets results be resubmitted.
+    3. `POST .../results/publish` (`RESULT_PUBLISH`).
+  - `GET /exam-schedules/{id}/results` shows the state, attempt counts and whether results are released.
+- **Extra time:** `PUT /exam-schedules/{id}/accommodations/{userId}` with `{extraMinutes 1..600, reason?}` (`ATTEMPT_ACCOMMODATE`). It extends that student's duration and the window end for them. An attempt already in progress gets the difference added. List them with `GET /exam-schedules/{id}/accommodations`.
+- **Live monitoring:** `GET /exam-schedules/{id}/attempts` (`EXAM_MONITOR_LIVE`) shows each attempt's status, current section and answered count.
+- **Background expiry:** `AttemptExpiryJob` closes and grades overdue attempts nobody has touched, every `ATTEMPT_EXPIRY_SWEEP_INTERVAL` (default 60s). It is safe with several instances.
+- **Super admins:** `GET /platform/tenants/{tenantId}/exam-schedules/{scheduleId}/attempts` and `GET /platform/tenants/{tenantId}/attempts/{attemptId}`. Each read is audited in the tenant's log.
