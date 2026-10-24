@@ -176,3 +176,19 @@ Tenant and platform exams share the same tables. A super admin's exams belong to
 - **Live monitoring:** `GET /exam-schedules/{id}/attempts` (`EXAM_MONITOR_LIVE`) shows each attempt's status, current section and answered count.
 - **Background expiry:** `AttemptExpiryJob` closes and grades overdue attempts nobody has touched, every `ATTEMPT_EXPIRY_SWEEP_INTERVAL` (default 60s). It is safe with several instances.
 - **Super admins:** `GET /platform/tenants/{tenantId}/exam-schedules/{scheduleId}/attempts` and `GET /platform/tenants/{tenantId}/attempts/{attemptId}`. Each read is audited in the tenant's log.
+
+## Reports (Phase 5)
+
+Reports use each student's best closed, fully graded attempt. Percentages and rates are 0–100, and answer keys are never included.
+
+- **Schedule report:** `GET /exam-schedules/{id}/report` (`REPORT_VIEW` on the exam's department or the tenant) returns:
+  - `counts`: students assigned (directly or through a department and its sub-departments), attempted, graded, pending grading and absent, plus attempts in progress, submitted and expired.
+  - `stats`: mean, median, min, max, population standard deviation and pass rate (when the exam has `passMarks`).
+  - `distribution`: ten score bands of 10% each.
+  - `students`: one row per student with status (`ABSENT`, `IN_PROGRESS`, `PENDING_GRADING`, `GRADED`), best score, percentage, pass/fail, competition rank (1, 2, 2, 4) and midrank percentile, `(below + equal / 2) / n`.
+  - `questions`: per question, responses, average marks, full-marks rate, how often each option was chosen, and discrimination (full-marks rate of the top third minus the bottom third, from three graded students).
+- **CSV export:** `GET /exam-schedules/{id}/report.csv` (`REPORT_EXPORT`) gives the student rows. Text starting with `=`, `+`, `-` or `@` is prefixed with `'` so spreadsheets don't run it as a formula. Each export is audited as `REPORT_EXPORTED`.
+- **Students:** each released result in `GET /me/results` gains `rank`, `percentile` and `cohortSize` once the window has closed and no attempt is still in progress.
+- **Super admins** (`PLATFORM_BREAK_GLASS`; each read is audited in the tenant's log):
+  - `GET /platform/tenants/{tenantId}/exam-schedules/{scheduleId}/report`: a tenant's schedule report.
+  - `GET /platform/exams/{examId}/report`: a platform exam across every tenant it was distributed to, with schedules, graded students, average percentage and pass rate per tenant and overall.

@@ -125,11 +125,29 @@ public class ResultService {
             Optional<ScheduleResult> result = resultRepository.findByScheduleIdAndTenantId(scheduleId, tenantId);
             List<ExamAttempt> own = attempts.stream().filter(a -> a.getScheduleId().equals(scheduleId)).toList();
             own.forEach(a -> attemptService.expireIfOverdue(a.getAttemptId()));
+            Map<UUID, ExamAttempt> best = null;
             for (ExamAttempt a : own) {
-                if (released(a, schedule, result)) {
-                    Exam exam = examRepository.findByExamIdAndTenantId(a.getExamId(), tenantId).orElseThrow();
-                    results.add(attemptService.result(a, exam));
+                if (!released(a, schedule, result)) {
+                    continue;
                 }
+                Exam exam = examRepository.findByExamIdAndTenantId(a.getExamId(), tenantId).orElseThrow();
+                StudentResultResponse r = attemptService.result(a, exam);
+                if (!Instant.now().isBefore(schedule.getEndsAt())) {
+                    if (best == null) {
+                        List<ExamAttempt> all = attemptRepository.findByTenantIdAndScheduleIdOrderByStartedAt(tenantId,
+                                scheduleId);
+                        best = all.stream().anyMatch(x -> x.getStatus() == AttemptStatus.IN_PROGRESS) ? Map.of()
+                                : ScoreStatistics.bestGraded(all);
+                    }
+                    if (!best.isEmpty()) {
+                        List<java.math.BigDecimal> cohort = new ArrayList<>(best.values().stream()
+                                .filter(b -> !b.getUserId().equals(a.getUserId())).map(ExamAttempt::getScore).toList());
+                        cohort.add(a.getScore());
+                        ScoreStatistics.Standing standing = ScoreStatistics.standing(a.getScore(), cohort);
+                        r = r.withStanding(standing.rank(), standing.percentile(), cohort.size());
+                    }
+                }
+                results.add(r);
             }
         }
         return results;

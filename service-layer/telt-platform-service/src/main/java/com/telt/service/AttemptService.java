@@ -371,7 +371,8 @@ public class AttemptService {
         }).toList();
         return new StudentResultResponse(attempt.getAttemptId(), attempt.getScheduleId(), attempt.getExamId(),
                 exam.getTitle(), attempt.getAttemptNo(), attempt.getStatus(), attempt.getSubmittedAt(), attempt.getScore(),
-                attempt.getMaxScore(), pass, pass == null ? null : attempt.getScore().compareTo(pass) >= 0, answers);
+                attempt.getMaxScore(), pass, pass == null ? null : attempt.getScore().compareTo(pass) >= 0, answers,
+                null, null, null);
     }
 
     private record Context(ExamAttempt attempt, List<ExamSection> sections, Map<UUID, ExamQuestionSnapshot> snapshots,
